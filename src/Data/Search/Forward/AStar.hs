@@ -13,7 +13,7 @@ import qualified Data.HashMap.Lazy as M
 import qualified Data.HashSet as S
 import qualified Data.HashPSQ as Q
 
-astar :: forall a c t. (Foldable t, Eq a, Hashable a, Ord a, Ord c, Num c) 
+astar :: forall a c t. (Foldable t, Eq a, Hashable a, Ord a, Ord c, Num c)
       => (a -> t (a,c))             -- ^ Neighbor function
       -> (a -> c)                   -- ^ Heuristic function
       -> (a -> Bool)                -- ^ Goal check
@@ -21,7 +21,7 @@ astar :: forall a c t. (Foldable t, Eq a, Hashable a, Ord a, Ord c, Num c)
       -> Maybe [a]
 astar neighbor heuristic goal root = 
     let h0 = heuristic root 
-     in go (Q.singleton root h0 h0) M.empty
+     in go (Q.singleton root h0 0) M.empty
 
     where go :: HashPSQ a c c -> HashMap a (a, c) -> Maybe [a]
           go (Q.minView -> Nothing) _ = Nothing
@@ -38,13 +38,14 @@ astar neighbor heuristic goal root =
                    in go q' p'
           
           updateQ :: a -> c -> Maybe (c,c) -> ((), Maybe (c,c))
-          updateQ y g Nothing = ((), Just (g, g + heuristic y))
+          updateQ y g Nothing = ((), Just (g + heuristic y, g))
           updateQ y g (Just (f',g')) =
               let f = g + heuristic y
                in if f < f' then ((), Just (f,g)) else ((), Just (f',g'))
 
           updateM x c Nothing  = Just (x, c)
-          updateM x c (Just _) = Just (x, c)
+          updateM x c (Just (x',c')) = 
+              if c < c' then Just (x, c) else Just (x', c')
           
           reconstruct past x
               | x == root = [x]
