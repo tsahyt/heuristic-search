@@ -1,7 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE PatternGuards #-}
-module Data.Search.Forward.AStar where
+module Data.Search.Forward.AStar 
+(
+    astar,
+    astar'
+)
+where
 
 import Data.Bifunctor
 import Data.Foldable
@@ -12,7 +17,15 @@ import Data.HashPSQ (HashPSQ)
 import qualified Data.HashMap.Lazy as M
 import qualified Data.HashPSQ as Q
 
-astar :: forall a b c t. (Foldable t, Eq a, Hashable a, Ord a, Ord c, Num c)
+-- | A* search algorithm for graphs generalized to functions. The neighbor
+-- function describes all outgoing arcs from a given node of type @a@ as some
+-- 'Foldable' collection. The tuples describe neighbors of type @a@, reachable
+-- over edges of label type @b@ with cost of type @c@.
+--
+-- The heuristic function is given as a simple node evaluation function, @a ->
+-- c@. The goal check is given in the same spirit as @a -> Bool@. Finally the
+-- algorithm requires some node to start from.
+astar :: forall a b c t. (Foldable t, Hashable a, Ord a, Ord c, Num c)
       => (a -> t (a, b, c))         -- ^ Neighbor function
       -> (a -> c)                   -- ^ Heuristic function
       -> (a -> Bool)                -- ^ Goal check
