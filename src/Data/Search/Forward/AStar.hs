@@ -40,6 +40,7 @@ astar neighbor heuristic goal root =
               | x == root = []
               | Just (x',l,_) <- M.lookup x past = l : reconstruct past x'
               | otherwise = []
+{-# INLINEABLE astar #-}
 
 -- | Like 'astar' but without labelled edges.
 astar' :: (Functor t, Num c, Ord c, Ord a, Hashable a, Foldable t) 
