@@ -5,13 +5,14 @@ module Data.Search.Forward.AStar
 (
     astar,
     astar',
-    idastar
+    idastar,
+    idastar'
 )
 where
 
-import Data.Either
 import Data.Bifunctor
 import Data.Foldable
+import Data.Semigroup
 import Data.Hashable
 import Data.HashMap.Strict (HashMap)
 import Data.HashPSQ (HashPSQ)
@@ -86,7 +87,18 @@ alter' :: (Ord p, Ord k, Hashable k)
 alter' f k = snd . Q.alter (\x -> ((), f x)) k
 {-# INLINE alter' #-}
 
-idastar :: forall a b c t. (Foldable t, Ord c, Num c)
+newtype AltMin l r = AltMin { altMin :: Either (Option (Min l)) r }
+    deriving (Show, Eq)
+
+instance Ord l => Monoid (AltMin l r) where
+    mempty = AltMin (Left (Option Nothing))
+    mappend (AltMin (Right x)) _ = AltMin (Right x)
+    mappend (AltMin (Left _)) (AltMin (Right y)) = AltMin (Right y)
+    mappend (AltMin (Left x)) (AltMin (Left y)) = AltMin (Left $ x <> y)
+
+-- | Iterative Deepening A*. This function does /not/ work with 0-cost loops,
+-- i.e. nodes having themselves as 0 cost successors.
+idastar :: forall a b c t. (Functor t, Foldable t, Ord c, Num c)
         => (a -> t (a, b, c))         -- ^ Neighbor function
         -> (a -> c)                   -- ^ Heuristic function
         -> (a -> Bool)                -- ^ Goal check
@@ -94,20 +106,21 @@ idastar :: forall a b c t. (Foldable t, Ord c, Num c)
         -> Maybe [b]
 idastar neighbor heuristic goal root = deepen 1
     where deepen limit = 
-              case go root limit Nothing of
-                  Left (Just f) -> deepen f
+              case go root limit (heuristic root, 0) of
+                  Left (Just f) -> if f < 150 then deepen f else Nothing
                   Left Nothing -> Nothing
                   Right x -> Just x
 
-          go :: a -> c -> Maybe c -> Either (Maybe c) [b]
-          go x limit f
-              | limit <= 0 = Left f
+          go :: a -> c -> (c,c) -> Either (Maybe c) [b]
+          go x limit (f, g)
+              | goal x     = Right []
+              | limit <= 0 = Left (Just f)
               | otherwise  =
-                  let xs = toList $ neighbor x
-                      (ls,rs) = partitionEithers _
-                   in case rs of
-                          [] -> Left . minimum . lefts $ Left f : ls
-                          (y:_) -> y
+                  let xs = fmap (\(x',l,c) -> fmap (l:) 
+                         $ go x' (limit - c) (g + c + heuristic x', g + c)) 
+                         $ neighbor x
+                   in first (fmap getMin . getOption) . altMin 
+                    . foldMap (AltMin . first (Option . fmap Min)) $ xs
 
 idastar' :: (Functor t, Foldable t, Ord c, Num c) 
          => (a -> t (a, c)) 
