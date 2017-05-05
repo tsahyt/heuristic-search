@@ -4,10 +4,12 @@
 module Data.Search.Forward.AStar 
 (
     astar,
-    astar'
+    astar',
+    idastar
 )
 where
 
+import Data.Either
 import Data.Bifunctor
 import Data.Foldable
 import Data.Hashable
@@ -65,6 +67,7 @@ astar' :: (Functor t, Num c, Ord c, Ord a, Hashable a, Foldable t)
 astar' neighbor heuristic goal root =
     let neighbor' = fmap (fmap (\(a,c) -> (a,a,c))) neighbor
      in fmap (root :) $ astar neighbor' heuristic goal root
+{-# INLINEABLE astar' #-}
           
 updateQ :: Ord c => c -> c -> Maybe (c,c) -> (Maybe (c,c))
 updateQ f g Nothing = Just (f, g)
@@ -82,3 +85,36 @@ alter' :: (Ord p, Ord k, Hashable k)
        => (Maybe (p, v) -> Maybe (p, v)) -> k -> HashPSQ k p v -> HashPSQ k p v
 alter' f k = snd . Q.alter (\x -> ((), f x)) k
 {-# INLINE alter' #-}
+
+idastar :: forall a b c t. (Foldable t, Ord c, Num c)
+        => (a -> t (a, b, c))         -- ^ Neighbor function
+        -> (a -> c)                   -- ^ Heuristic function
+        -> (a -> Bool)                -- ^ Goal check
+        -> a                          -- ^ Starting node
+        -> Maybe [b]
+idastar neighbor heuristic goal root = deepen 1
+    where deepen limit = 
+              case go root limit Nothing of
+                  Left (Just f) -> deepen f
+                  Left Nothing -> Nothing
+                  Right x -> Just x
+
+          go :: a -> c -> Maybe c -> Either (Maybe c) [b]
+          go x limit f
+              | limit <= 0 = Left f
+              | otherwise  =
+                  let xs = toList $ neighbor x
+                      (ls,rs) = partitionEithers _
+                   in case rs of
+                          [] -> Left . minimum . lefts $ Left f : ls
+                          (y:_) -> y
+
+idastar' :: (Functor t, Foldable t, Ord c, Num c) 
+         => (a -> t (a, c)) 
+         -> (a -> c) 
+         -> (a -> Bool) 
+         -> a 
+         -> Maybe [a]
+idastar' neighbor heuristic goal root =
+    let neighbor' = fmap (fmap (\(a,c) -> (a,a,c))) neighbor
+     in fmap (root :) $ idastar neighbor' heuristic goal root
