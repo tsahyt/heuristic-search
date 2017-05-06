@@ -127,6 +127,7 @@ idastar neighbor heuristic goal root = deepen (heuristic root)
                          $ neighbor x
                    in first (fmap getMin . getOption) . altMin 
                     . foldMap (AltMin . first (Option . fmap Min)) $ xs
+{-# INLINEABLE idastar #-}
 
 idastar' :: (Functor t, Foldable t, Ord c, Num c)
          => (a -> t (a, c)) 
@@ -137,3 +138,4 @@ idastar' :: (Functor t, Foldable t, Ord c, Num c)
 idastar' neighbor heuristic goal root =
     let neighbor' = fmap (fmap (\(a,c) -> (a,a,c))) neighbor
      in fmap (root :) $ idastar neighbor' heuristic goal root
+{-# INLINEABLE idastar' #-}
