@@ -28,6 +28,12 @@ import qualified Data.HashPSQ as Q
 -- The heuristic function is given as a simple node evaluation function, @a ->
 -- c@. The goal check is given in the same spirit as @a -> Bool@. Finally the
 -- algorithm requires some node to start from.
+--
+-- Note that the heuristic /must/ be >= 0 for all nodes! Negative heuristic
+-- values will be harmful!
+--
+-- Due to the construction of the algorithm, all nodes are restricted to a
+-- finite number of neighbors.
 astar :: forall a b c t. (Foldable t, Hashable a, Ord a, Ord c, Num c)
       => (a -> t (a, b, c))         -- ^ Neighbor function
       -> (a -> c)                   -- ^ Heuristic function
@@ -104,25 +110,25 @@ idastar :: forall a b c t. (Functor t, Foldable t, Ord c, Num c)
         -> (a -> Bool)                -- ^ Goal check
         -> a                          -- ^ Starting node
         -> Maybe [b]
-idastar neighbor heuristic goal root = deepen 1
-    where deepen limit = 
+idastar neighbor heuristic goal root = deepen (heuristic root)
+    where deepen limit =
               case go root limit (heuristic root, 0) of
-                  Left (Just f) -> if f < 150 then deepen f else Nothing
+                  Left (Just f) -> deepen f
                   Left Nothing -> Nothing
                   Right x -> Just x
 
           go :: a -> c -> (c,c) -> Either (Maybe c) [b]
           go x limit (f, g)
-              | goal x     = Right []
-              | limit <= 0 = Left (Just f)
-              | otherwise  =
+              | goal x    = Right []
+              | f > limit = Left (Just f)
+              | otherwise =
                   let xs = fmap (\(x',l,c) -> fmap (l:) 
-                         $ go x' (limit - c) (g + c + heuristic x', g + c)) 
+                         $ go x' limit (g + c + heuristic x', g + c)) 
                          $ neighbor x
                    in first (fmap getMin . getOption) . altMin 
                     . foldMap (AltMin . first (Option . fmap Min)) $ xs
 
-idastar' :: (Functor t, Foldable t, Ord c, Num c) 
+idastar' :: (Functor t, Foldable t, Ord c, Num c)
          => (a -> t (a, c)) 
          -> (a -> c) 
          -> (a -> Bool) 

@@ -47,7 +47,7 @@ main = defaultMain
         ]
     ]
 
-euclidian1D goal x = goal - x
+euclidian1D goal x = abs $ goal - x
 trivial x = [(x + 1, 1)]
 branched x = [(x + 1, 1), (x - 1, 1)]
 looped x = [(x + 1, 1), (x, 1)]
