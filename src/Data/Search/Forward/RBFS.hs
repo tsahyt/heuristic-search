@@ -1,20 +1,59 @@
-module Data.Serach.Forward.RBFS
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
+module Data.Search.Forward.RBFS
 (
+    rbfs
 )
 where
 
-rbfs :: forall a c t. (Foldable t, Ord a, Ord c, Num c)
+import Data.Foldable
+import Data.Hashable
+import Data.Maybe
+import qualified Data.HashPSQ as Q
+
+data Inf a = Inf | Fin !a
+    deriving (Show, Eq)
+
+instance Ord a => Ord (Inf a) where
+    Inf   <= _     = False
+    _     <= Inf   = True
+    Fin a <= Fin b = a <= b
+
+rbfs :: forall a c t. (Foldable t, Hashable a, Ord a, Ord c, Num c)
      => (a -> t (a, c))            -- ^ Neighbor function
      -> (a -> c)                   -- ^ Heuristic function
      -> (a -> Bool)                -- ^ Goal check
      -> a                          -- ^ Starting node
      -> Maybe [a]
-rbfs neighbor heuristic goal root = undefined
-    where go :: a -> Maybe c -> Either (Maybe c) [a]
-          go x fLimit
+rbfs neighbor heuristic goal root = 
+    case go root Inf (Fin $ heuristic root, 0) of
+        Left _  -> Nothing
+        Right x -> Just x
+
+    where go :: a -> Inf c -> (Inf c, c) -> Either (Inf c) [a]
+          go x fLimit (f,g)
               | goal x = Right [x]
               | otherwise =
-                  let xs = neighbor x
-                   in case xs of
-                          []  -> Left Nothing
-                          xs' -> undefined
+                  let xs = Q.fromList . map (buildS f g)
+                         . toList . neighbor $ x
+                   in loopNode fLimit xs
+          
+          buildS f g (a,c) =
+              let g' = g + c
+                  f' = max (Fin $ g' + heuristic a) f
+               in (a, f', g')
+
+          loopNode _ (Q.minView -> Nothing) = Left Inf
+          loopNode fLimit (Q.minView -> Just (x,f,g,q))
+              | f > fLimit = Left f
+              | otherwise =
+                  let alt = fromMaybe Inf . fmap mid . Q.findMin $ q
+                   in case go x (min fLimit alt) (f,g) of
+                          Left f' -> loopNode fLimit (Q.insert x f' g q)
+                          Right z -> Right z
+
+          loopNode _ _ = error "impossible"
+
+mid :: (a, b, c) -> b
+mid (_,x,_) = x
+{-# INLINE mid #-}
