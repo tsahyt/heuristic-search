@@ -73,10 +73,10 @@ astar' :: (Functor t, Num c, Ord c, Ord a, Hashable a, Foldable t)
        -> Maybe [a]
 astar' neighbor heuristic goal root =
     let neighbor' = fmap (fmap (\(a,c) -> (a,a,c))) neighbor
-     in fmap (root :) $ astar neighbor' heuristic goal root
+     in (root :) <$> astar neighbor' heuristic goal root
 {-# INLINEABLE astar' #-}
           
-updateQ :: Ord c => c -> c -> Maybe (c,c) -> (Maybe (c,c))
+updateQ :: Ord c => c -> c -> Maybe (c,c) -> Maybe (c,c)
 updateQ f g Nothing = Just (f, g)
 updateQ f g (Just (f',g')) = if f < f' then Just (f,g) else Just (f',g')
 {-# INLINE updateQ #-}
@@ -122,9 +122,9 @@ idastar neighbor heuristic goal root = deepen (heuristic root)
               | goal x    = Right []
               | f > limit = Left (Just f)
               | otherwise =
-                  let xs = fmap (\(x',l,c) -> fmap (l:) 
-                         $ go x' limit (g + c + heuristic x', g + c)) 
-                         $ neighbor x
+                  let xs = (\(x',l,c) -> (l :) 
+                       <$> go x' limit (g + c + heuristic x', g + c)) 
+                       <$> neighbor x
                    in first (fmap getMin . getOption) . altMin 
                     . foldMap (AltMin . first (Option . fmap Min)) $ xs
 {-# INLINEABLE idastar #-}
@@ -137,5 +137,5 @@ idastar' :: (Functor t, Foldable t, Ord c, Num c)
          -> Maybe [a]
 idastar' neighbor heuristic goal root =
     let neighbor' = fmap (fmap (\(a,c) -> (a,a,c))) neighbor
-     in fmap (root :) $ idastar neighbor' heuristic goal root
+     in (root :) <$> idastar neighbor' heuristic goal root
 {-# INLINEABLE idastar' #-}

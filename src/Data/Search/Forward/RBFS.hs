@@ -9,7 +9,6 @@ where
 
 import Data.Foldable
 import Data.Hashable
-import Data.Maybe
 import qualified Data.HashPSQ as Q
 
 data Inf a = Inf | Fin !a
@@ -48,7 +47,7 @@ rbfs neighbor heuristic goal root =
           loop fLimit (Q.minView -> Just (x, f, (b, g), q))
               | f > fLimit = Left f
               | otherwise =
-                  let alt = fromMaybe Inf . fmap mid . Q.findMin $ q
+                  let alt = maybe Inf mid . Q.findMin $ q
                    in case go x (min fLimit alt) (f, g) of
                           Left f' -> loop fLimit (Q.insert x f' (b, g) q)
                           Right z -> Right $ b : z
@@ -63,7 +62,7 @@ rbfs' :: forall a c t. (Functor t, Foldable t, Hashable a, Ord a, Ord c, Num c)
       -> Maybe [a]
 rbfs' neighbor heuristic goal root =
     let neighbor' = fmap (fmap (\(a,c) -> (a,a,c))) neighbor
-     in fmap (root :) $ rbfs neighbor' heuristic goal root
+     in (root :) <$> rbfs neighbor' heuristic goal root
 
 mid :: (a, b, c) -> b
 mid (_,x,_) = x
