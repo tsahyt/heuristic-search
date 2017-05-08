@@ -27,32 +27,32 @@ rbfs :: forall a c t. (Foldable t, Hashable a, Ord a, Ord c, Num c)
      -> Maybe [a]
 rbfs neighbor heuristic goal root = 
     case go root Inf (Fin $ heuristic root, 0) of
-        Left _  -> Nothing
+        Left  _ -> Nothing
         Right x -> Just x
 
     where go :: a -> Inf c -> (Inf c, c) -> Either (Inf c) [a]
-          go x fLimit (f,g)
+          go x fLimit (f, g)
               | goal x = Right [x]
               | otherwise =
                   let xs = Q.fromList . map (buildS f g)
                          . toList . neighbor $ x
-                   in loopNode fLimit xs
+                   in fmap (x :) $ loop fLimit xs
           
-          buildS f g (a,c) =
+          buildS f g (a, c) =
               let g' = g + c
                   f' = max (Fin $ g' + heuristic a) f
                in (a, f', g')
 
-          loopNode _ (Q.minView -> Nothing) = Left Inf
-          loopNode fLimit (Q.minView -> Just (x,f,g,q))
+          loop _ (Q.minView -> Nothing) = Left Inf
+          loop fLimit (Q.minView -> Just (x, f, g, q))
               | f > fLimit = Left f
               | otherwise =
                   let alt = fromMaybe Inf . fmap mid . Q.findMin $ q
-                   in case go x (min fLimit alt) (f,g) of
-                          Left f' -> loopNode fLimit (Q.insert x f' g q)
+                   in case go x (min fLimit alt) (f, g) of
+                          Left f' -> loop fLimit (Q.insert x f' g q)
                           Right z -> Right z
 
-          loopNode _ _ = error "impossible"
+          loop _ _ = error "impossible"
 
 mid :: (a, b, c) -> b
 mid (_,x,_) = x
