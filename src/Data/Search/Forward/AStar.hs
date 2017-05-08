@@ -129,6 +129,7 @@ idastar neighbor heuristic goal root = deepen (heuristic root)
                     . foldMap (AltMin . first (Option . fmap Min)) $ xs
 {-# INLINEABLE idastar #-}
 
+-- | Like 'idastar', but without edge labels.
 idastar' :: (Functor t, Foldable t, Ord c, Num c)
          => (a -> t (a, c)) 
          -> (a -> c) 

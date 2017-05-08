@@ -48,3 +48,14 @@ dfs suc goal = dfs' HS.empty . toList
               | otherwise = (n :) <$> dfs' (n `HS.insert` visited) 
                                            (toList (suc n) ++ ns)
           dfs' _ [] = Nothing
+
+dfsT :: (Functor t, Foldable t)
+     => (a -> t a)          -- ^ Successor function
+     -> (a -> Bool)         -- ^ Goal check
+     -> a                   -- ^ Starting node
+     -> Maybe [a]
+dfsT suc goal = go . pure
+    where go [] = Nothing
+          go (n:ns)
+              | goal n    = Just [n]
+              | otherwise = (n :) <$> asum []

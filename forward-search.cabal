@@ -15,7 +15,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Data.Search.Forward.AStar
+  exposed-modules:     Data.Search.Forward
+                       Data.Search.Forward.AStar
                        Data.Search.Forward.RBFS
                        Data.Search.Forward.NonOptimal
   ghc-options:         -Wall -O2
