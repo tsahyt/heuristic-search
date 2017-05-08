@@ -1,3 +1,6 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE LambdaCase #-}
 module Data.Search.Forward.NonOptimal
 (
     -- * Depth First
@@ -8,15 +11,21 @@ module Data.Search.Forward.NonOptimal
 
     -- * Breadth First
     bft,
-    bftT
+    bftT,
+    bfs
 )
 where
 
+import Control.Monad.State
+import Data.Bifunctor
 import Data.Foldable
 import Data.Hashable
-import Data.Sequence (Seq)
+import Data.HashMap.Strict (HashMap)
+import Deque (Deque)
 
 import qualified Data.HashSet as HS
+import qualified Data.HashMap.Strict as HM
+import qualified Deque as DQ
 
 -- | 'dft' provides a simple depth first traversal of a graph with unlabeled
 -- edges. Nodes are returned in the order they are visted.
@@ -41,8 +50,8 @@ dftT suc = go . toList
     where go (n:ns) = n : go (toList (suc n) ++ ns)
           go [] = []
 
--- | 'dfs' provides a depth first search of a graph with unlabeled edges. Nodes
--- are returned in the order they are visted.
+-- | 'dfs' provides a depth first search of a graph with unlabeled edges.
+-- Returns exactly the discovered path from root to the first goal, if any.
 dfs :: (Foldable t, Eq a, Hashable a)
     => (a -> t a)           -- ^ Successor function
     -> (a -> Bool)          -- ^ Goal check
@@ -90,3 +99,35 @@ bftT :: Foldable t
 bftT suc = go . toList
     where go [] = []
           go (n:ns) = n : go (ns ++ toList (suc n))
+
+-- | 'bfs' performes a breadth first search of a graph with unlabeled edges.
+-- Returns exactly the discovered path from root to the first goal, if any.
+--
+-- Breadth first search is optimal if the path cost is a nondecreasing function
+-- of the depth of the node. 'bfs' is placed in the "NonOptimal" module since
+-- costs cannot be arbitrary.
+bfs :: forall a t. (Foldable t, Hashable a, Eq a)
+    => (a -> t a)
+    -> (a -> Bool)
+    -> a
+    -> Maybe [a]
+bfs suc goal root = 
+    let (x, (m, _)) = runState search (HM.empty, DQ.fromList . pure $ root)
+     in x >>= fmap reverse . reconstruct m
+
+    where search :: State (HashMap a a, Deque a) (Maybe a)
+          search = DQ.uncons <$> gets snd >>= \case
+              Nothing -> pure Nothing
+              Just (x, q) -> if goal x then pure (Just x) else do
+                  let xs = suc x
+                  modify $ bimap 
+                      (\m -> foldl' (flip (`HM.insert` x)) m xs)
+                      (DQ.prepend . DQ.fromList . toList $ xs)
+                      . second (const q)
+                  search
+        
+          reconstruct :: HashMap a a -> a -> Maybe [a]
+          reconstruct m x
+              | x == root = Just [x]
+              | Just x' <- x `HM.lookup` m = (x :) <$> reconstruct m x'
+              | otherwise = Nothing
