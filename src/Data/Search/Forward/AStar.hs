@@ -5,6 +5,8 @@ module Data.Search.Forward.AStar
 (
     astar,
     astar',
+    dijkstra,
+    dijkstra',
     idastar,
     idastar'
 )
@@ -65,7 +67,7 @@ astar neighbor heuristic goal root =
 {-# INLINEABLE astar #-}
 
 -- | Like 'astar' but without labelled edges.
-astar' :: (Functor t, Num c, Ord c, Ord a, Hashable a, Foldable t) 
+astar' :: (Functor t, Foldable t, Num c, Ord c, Ord a, Hashable a)
        => (a -> t (a, c))           -- ^ Neighbor function
        -> (a -> c)                  -- ^ Heuristic function
        -> (a -> Bool)               -- ^ Goal check
@@ -75,6 +77,24 @@ astar' neighbor heuristic goal root =
     let neighbor' = fmap (fmap (\(a,c) -> (a,a,c))) neighbor
      in (root :) <$> astar neighbor' heuristic goal root
 {-# INLINEABLE astar' #-}
+
+-- | Convenience function to use A* as Dijkstras algorithm by setting the
+-- heuristic to be 0 for all nodes. Note that this is likely not the most
+-- performant Dijkstra implementation because it retains all overhead from
+-- handling the (non-existent) heuristic.
+dijkstra :: (Foldable t, Num c, Ord c, Ord a, Hashable a) 
+    => (a -> t (a, b, c)) -> (a -> Bool) -> a -> Maybe [b]
+dijkstra neighbor goal root = astar neighbor (const 0) goal root
+{-# INLINE dijkstra #-}
+
+-- | Convenience function to use A* as Dijkstras algorithm by setting the
+-- heuristic to be 0 for all nodes, enumerating nodes analogous to 'astar''.
+-- Note that this is likely not the most performant Dijkstra implementation
+-- because it retains all overhead from handling the (non-existent) heuristic.
+dijkstra' :: (Functor t, Foldable t, Num c, Ord c, Ord a, Hashable a) 
+    => (a -> t (a, c)) -> (a -> Bool) -> a -> Maybe [a]
+dijkstra' neighbor goal root = astar' neighbor (const 0) goal root
+{-# INLINE dijkstra' #-}
           
 updateQ :: Ord c => c -> c -> Maybe (c,c) -> Maybe (c,c)
 updateQ f g Nothing = Just (f, g)
