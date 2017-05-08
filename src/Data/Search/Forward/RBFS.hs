@@ -53,6 +53,7 @@ rbfs neighbor heuristic goal root =
                           Right z -> Right $ b : z
 
           loop _ _ = error "impossible"
+{-# INLINABLE rbfs #-}
 
 rbfs' :: forall a c t. (Functor t, Foldable t, Hashable a, Ord a, Ord c, Num c)
       => (a -> t (a, c))            -- ^ Neighbor function
@@ -63,6 +64,7 @@ rbfs' :: forall a c t. (Functor t, Foldable t, Hashable a, Ord a, Ord c, Num c)
 rbfs' neighbor heuristic goal root =
     let neighbor' = fmap (fmap (\(a,c) -> (a,a,c))) neighbor
      in (root :) <$> rbfs neighbor' heuristic goal root
+{-# INLINABLE rbfs' #-}
 
 mid :: (a, b, c) -> b
 mid (_,x,_) = x
