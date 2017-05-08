@@ -20,7 +20,7 @@ import Data.HashPSQ (HashPSQ)
 import qualified Data.HashMap.Lazy as M
 import qualified Data.HashPSQ as Q
 
--- | A* search algorithm for graphs generalized to functions. The neighbor
+-- | __A* search algorithm__ for graphs generalized to functions. The neighbor
 -- function describes all outgoing arcs from a given node of type @a@ as some
 -- 'Foldable' collection. The tuples describe neighbors of type @a@, reachable
 -- over edges of label type @b@ with cost of type @c@.

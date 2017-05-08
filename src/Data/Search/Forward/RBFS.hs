@@ -19,6 +19,18 @@ instance Ord a => Ord (Inf a) where
     _     <= Inf   = True
     Fin a <= Fin b = a <= b
 
+-- | __Recursive best first search__. The neighbor function describes all
+-- outgoing arcs from a given node of type @a@ as some 'Foldable' collection.
+-- The tuples describe neighbors of type @a@, reachable over edges of label type
+-- @b@ with cost type @c@.
+--
+-- The heuristic function is given as a node evaluation @a -> c@. The goal check
+-- is given as an @a -> Bool@.
+--
+-- The heuristic must be @>= 0@. Admissibility is required for optimal paths.
+-- Results from the neighbor function /must/ be finite, as the algorithm
+-- internally utilizes a queue, the building of which cannot terminate for
+-- infinite inputs.
 rbfs :: forall a b c t. (Foldable t, Hashable a, Ord a, Ord c, Num c)
      => (a -> t (a, b, c))         -- ^ Neighbor function
      -> (a -> c)                   -- ^ Heuristic function
@@ -55,6 +67,7 @@ rbfs neighbor heuristic goal root =
           loop _ _ = error "impossible"
 {-# INLINABLE rbfs #-}
 
+-- | Like 'rbfs' but without edge labels.
 rbfs' :: forall a c t. (Functor t, Foldable t, Hashable a, Ord a, Ord c, Num c)
       => (a -> t (a, c))            -- ^ Neighbor function
       -> (a -> c)                   -- ^ Heuristic function
