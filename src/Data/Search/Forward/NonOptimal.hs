@@ -48,6 +48,7 @@ dftG suc = go HS.empty . toList
               | otherwise = n : go (n `HS.insert` visited) 
                                    (toList (suc n) ++ ns)
           go _ [] = []
+{-# INLINABLE dftG #-}
 
 -- | 'dft' provides a simple depth first traversal of a graph with unlabeled
 -- edges. Nodes are returned in the order they are visted. In the presence of
@@ -59,6 +60,7 @@ dft :: Foldable t
 dft suc = go . toList
     where go (n:ns) = n : go (toList (suc n) ++ ns)
           go [] = []
+{-# INLINE dft #-}
 
 -- | Like 'dfs' but using a visited set, i.e. doing graph search instead of tree
 -- search. This function can cope with cycles in the graph. In return, memory
@@ -75,6 +77,7 @@ dfsG suc goal = go HS.empty
               | otherwise = 
                     let v' = n `HS.insert` visited
                      in (n :) <$> asum [ go v' x | x <- toList (suc n) ]
+{-# INLINABLE dfsG #-}
 
 -- | 'dfs' provides a depth first search of a graph with unlabeled edges.
 -- Returns exactly the discovered path from root to the first goal, if any. In
@@ -88,6 +91,7 @@ dfs suc goal = go
     where go n 
               | goal n    = Just [n]
               | otherwise = (n :) <$> asum [ go x | x <- toList (suc n) ]
+{-# INLINE dfs #-}
 
 -- | 'dlt' performs a depth limited traversal. Nodes are returned in the order
 -- they are enountered.
@@ -102,6 +106,7 @@ dlt :: Foldable t
 dlt limit suc = go limit
     where go 0 x = [x]
           go l x = toList (suc x) >>= go (pred l)
+{-# INLINE dlt #-}
 
 -- | 'dfs' provides a depth limited search of a graph with unlabeled edges.
 -- Returns exactly the discovered path from root to the first goal, if any. Due
@@ -118,6 +123,7 @@ dls limit suc goal = go limit
               | goal n    = Just [n]
               | otherwise = (n :) <$> asum 
                                 [ go (pred l) x | x <- toList (suc n) ]
+{-# INLINE dls #-}
 
 -- | 'ids' performs iterative deepening search of a graph with unlabeled edges.
 -- Returns exactly the discovered path from root to the first goal. If there is
@@ -129,6 +135,7 @@ ids :: Foldable t
     -> Maybe [a]
 ids suc goal root = 
     listToMaybe $ mapMaybe (\l -> dls l suc goal root) [1..]
+{-# INLINEABLE ids #-}
 
 -- | 'bft' performs a breadth first traversal of a graph with unlabeled edges.
 -- Nodes are returned in the order they are visited.
@@ -142,6 +149,7 @@ bft suc = go HS.empty . toList
               | n `HS.member` visited = go visited ns
               | otherwise = n : go (n `HS.insert` visited) 
                                    (ns ++ toList (suc n))
+{-# INLINABLE bft #-}
 
 -- | Like 'bft' but traversing a tree. This has the potential to loop
 -- indefinitely in graphs with cycles!
@@ -152,6 +160,7 @@ bftT :: Foldable t
 bftT suc = go . toList
     where go [] = []
           go (n:ns) = n : go (ns ++ toList (suc n))
+{-# INLINE bftT #-}
 
 -- | 'bfs' performes a breadth first search of a graph with unlabeled edges.
 -- Returns exactly the discovered path from root to the first goal, if any.
