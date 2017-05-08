@@ -17,6 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Data.Search.Forward.AStar
                        Data.Search.Forward.RBFS
+                       Data.Search.Forward.NonOptimal
   ghc-options:         -Wall -O2
   build-depends:       base >= 4.7 && < 5,
                        unordered-containers,
