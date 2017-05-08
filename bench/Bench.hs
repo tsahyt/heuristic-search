@@ -1,6 +1,7 @@
 module Main where
 
 import Data.Search.Forward.AStar
+import Data.Search.Forward.RBFS
 import Criterion.Main
 
 main :: IO ()
@@ -45,6 +46,24 @@ main = defaultMain
             , bench "looped 100000" $ nf (idastar1D looped) 100000
             ]
         ]
+    , bgroup "rbfs"
+        [ bgroup "trivial" 
+            [ bench "trivial 100" $ nf (rbfs1D trivial) 100
+            , bench "trivial 1000" $ nf (rbfs1D trivial) 1000
+            , bench "trivial 10000" $ nf (rbfs1D trivial) 10000
+            , bench "trivial 100000" $ nf (rbfs1D trivial) 100000
+            ]
+        , bgroup "branched" 
+            [ bench "branched 100" $ nf (rbfs1D branched) 100
+            , bench "branched 1000" $ nf (rbfs1D branched) 1000
+            , bench "branched 10000" $ nf (rbfs1D branched) 10000
+            , bench "branched 100000" $ nf (rbfs1D branched) 100000
+            ]
+        , bgroup "looped" 
+            [ bench "looped 10000" $ nf (rbfs1D looped) 10000
+            , bench "looped 100000" $ nf (rbfs1D looped) 100000
+            ]
+        ]
     ]
 
 euclidian1D goal x = abs $ goal - x
@@ -58,3 +77,6 @@ astar1D neighbor goal = astar' neighbor (euclidian1D goal) (== goal) 0
 
 idastar1D :: (Int -> [(Int, Int)]) -> Int -> Maybe [Int]
 idastar1D neighbor goal = idastar' neighbor (euclidian1D goal) (== goal) 0
+
+rbfs1D :: (Int -> [(Int, Int)]) -> Int -> Maybe [Int]
+rbfs1D neighbor goal = rbfs' neighbor (euclidian1D goal) (== goal) 0
