@@ -1,3 +1,6 @@
+-- | Various simple traversals and primitive search functions for generalized
+-- graphs.
+
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE LambdaCase #-}
