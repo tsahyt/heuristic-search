@@ -2,7 +2,8 @@ module Data.Search.Forward.NonOptimal
 (
     dft,
     dftT,
-    dfs
+    dfs,
+    dfsT
 )
 where
 
@@ -39,23 +40,22 @@ dftT suc = go . toList
 dfs :: (Foldable t, Eq a, Hashable a)
     => (a -> t a)           -- ^ Successor function
     -> (a -> Bool)          -- ^ Goal check
-    -> t a                  -- ^ Starting list of nodes
+    -> a                    -- ^ Starting list of nodes
     -> Maybe [a]
-dfs suc goal = dfs' HS.empty . toList
-    where dfs' visited (n:ns)
+dfs suc goal = go HS.empty
+    where go visited n 
               | goal n = Just [n]
-              | n `HS.member` visited = dfs' visited ns
-              | otherwise = (n :) <$> dfs' (n `HS.insert` visited) 
-                                           (toList (suc n) ++ ns)
-          dfs' _ [] = Nothing
+              | n `HS.member` visited = Nothing
+              | otherwise = 
+                    let v' = n `HS.insert` visited
+                     in (n :) <$> asum [ go v' x | x <- toList (suc n) ]
 
 dfsT :: (Functor t, Foldable t)
      => (a -> t a)          -- ^ Successor function
      -> (a -> Bool)         -- ^ Goal check
      -> a                   -- ^ Starting node
      -> Maybe [a]
-dfsT suc goal = go . pure
-    where go [] = Nothing
-          go (n:ns)
+dfsT suc goal = go
+    where go n 
               | goal n    = Just [n]
-              | otherwise = (n :) <$> asum []
+              | otherwise = (n :) <$> asum [ go x | x <- toList (suc n) ]
