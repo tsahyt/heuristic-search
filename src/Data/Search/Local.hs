@@ -36,17 +36,22 @@ hillClimb neighbor eval start = go start (eval start)
               let (next, c') = maximumBy (comparing snd) 
                              . fmap (\z -> (z, eval z)) . neighbor $ x
                in if c' <= c then go next c' else x
+{-# INLINE hillClimb #-}
 
 -- | __Random restart hill climbing__. Utilizes 'hillClimb' underneath to
 -- perform @k@ runs of the standard hill climbing algorithm, starting from
 -- randomly generated states. The best (maximum) value across all runs will be
 -- returned.
+--
+-- When the iteration count is 0, a random state will be returned. This is done
+-- in order to keep the function total.
 rrHillClimb :: forall m a c. (MonadRandom m, Random a, Ord a, Ord c)
             => Natural
             -> (a -> NonEmpty a)    -- ^ Neighbor function
             -> (a -> c)             -- ^ Evaluation function 
             -> m a
-rrHillClimb 0 neighbor eval = rrHillClimb 1 neighbor eval
+rrHillClimb 0 _ _ = getRandom
 rrHillClimb n neighbor eval = 
     maximumBy (comparing eval) <$> replicateM (fromIntegral n) go
     where go = hillClimb neighbor eval <$> getRandom
+{-# INLINABLE rrHillClimb #-}
