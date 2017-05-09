@@ -131,13 +131,18 @@ dls limit suc goal = go limit
 -- | 'ids' performs iterative deepening search of a graph with unlabeled edges.
 -- Returns exactly the discovered path from root to the first goal. If there is
 -- no path, it will loop indefinitely!
+--
+-- An upper bound on the search depth can be set optionally with the first
+-- parameter.
 ids :: Foldable t 
-    => (a -> t a) 
+    => Maybe Natural
+    -> (a -> t a) 
     -> (a -> Bool) 
     -> a 
     -> Maybe [a]
-ids suc goal root = 
-    listToMaybe $ mapMaybe (\l -> dls l suc goal root) [1..]
+ids limit suc goal root = 
+    listToMaybe $ mapMaybe (\l -> dls l suc goal root) 
+                           (maybe [1..] (\x -> [1..x]) limit)
 {-# INLINEABLE ids #-}
 
 -- | 'bft' performs a breadth first traversal of a graph with unlabeled edges.

@@ -19,13 +19,16 @@ library
                        Data.Search.Forward.AStar
                        Data.Search.Forward.RBFS
                        Data.Search.Forward.NonOptimal
+                       Data.Search.Local
   ghc-options:         -Wall -O2
   build-depends:       base >= 4.7 && < 5,
                        unordered-containers,
                        deque >= 0.2,
                        psqueues,
                        hashable,
-                       mtl
+                       mtl,
+                       MonadRandom,
+                       random
   default-language:    Haskell2010
 
 benchmark bench
