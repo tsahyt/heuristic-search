@@ -19,6 +19,7 @@ library
                        Data.Search.Forward.AStar
                        Data.Search.Forward.RBFS
                        Data.Search.Forward.NonOptimal
+                       Data.Search.Forward.Beam
                        Data.Search.Local
   ghc-options:         -Wall -O2
   build-depends:       base >= 4.7 && < 5,
