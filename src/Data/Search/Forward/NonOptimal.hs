@@ -189,9 +189,11 @@ bfs suc goal root =
           search = DQ.uncons <$> gets snd >>= \case
               Nothing -> pure Nothing
               Just (x, q) -> if goal x then pure (Just x) else do
-                  let xs = suc x
+                  m <- gets fst
+                  let xs = filter (not . (`HM.member` m)) 
+                         . toList . suc $ x
                   modify $ bimap 
-                      (\m -> foldl' (flip (`HM.insert` x)) m xs)
+                      (\z -> foldl' (flip (`HM.insert` x)) z xs)
                       (DQ.prepend . DQ.fromList . toList $ xs)
                       . second (const q)
                   search

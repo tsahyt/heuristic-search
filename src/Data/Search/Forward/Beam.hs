@@ -2,6 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 module Data.Search.Forward.Beam
 (
     beam
@@ -83,7 +84,9 @@ beam width neighbor heuristic goal root =
           search = nextView <$> gets snd >>= \case
               Nothing -> pure Nothing
               Just (x, b) -> if goal x then pure (Just x) else do
-                  let xs = neighbor x
+                  m <- gets fst
+                  let xs = filter (not . (`HM.member` m)) 
+                         . toList . neighbor $ x
                   modify $ bimap 
                       (\z -> foldl' (flip (`HM.insert` x)) z xs)
                       (\z -> foldl' (flip (ap insert heuristic)) z xs)
