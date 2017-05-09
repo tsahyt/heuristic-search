@@ -31,12 +31,26 @@ hillClimb :: forall a c. (Ord a, Ord c)
           -> (a -> c)               -- ^ Evaluation function
           -> a                      -- ^ Starting node
           -> a
-hillClimb neighbor eval start = go start (eval start)
+hillClimb neighbor eval start = last $ atHillClimb neighbor eval start
+{-# INLINE hillClimb #-}
+
+-- | Anytime variant of 'hillClimb'. The result is the full sequence of visited
+-- states, and is generated lazily. It can therefore be consumed as necessary.
+-- The last element is the local optimum found by the hill climbing search.
+--
+-- Result is guaranteed to be non-empty as at least the starting node is
+-- contained.
+atHillClimb :: forall a c. (Ord a, Ord c)
+            => (a -> NonEmpty a)      -- ^ Neighbor function
+            -> (a -> c)               -- ^ Evaluation function
+            -> a                      -- ^ Starting node
+            -> [a]
+atHillClimb neighbor eval start = go start (eval start)
     where go x c = 
               let (next, c') = maximumBy (comparing snd) 
                              . fmap (\z -> (z, eval z)) . neighbor $ x
-               in if c' <= c then go next c' else x
-{-# INLINE hillClimb #-}
+               in if c' <= c then x : go next c' else [x]
+{-# INLINE atHillClimb #-}
 
 -- | __Random restart hill climbing__. Utilizes 'hillClimb' underneath to
 -- perform @k@ runs of the standard hill climbing algorithm, starting from
