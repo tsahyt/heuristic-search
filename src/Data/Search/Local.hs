@@ -77,9 +77,20 @@ rrHillClimb n neighbor eval =
     where go = hillClimb neighbor eval <$> getRandom
 {-# INLINABLE rrHillClimb #-}
 
+-- | __Enforced hill climbing__ is a hill-climbing variant that picks a
+-- successor note only if it has a strictly better heuristic evaluation than the
+-- current node. This is a minimizing algorithm, to facilitate use with standard
+-- A* like heuristics. As such the goal is assumed to have heuristic value 0.
+--
+-- Because not every node necessarily has a successor that is better than
+-- itself, EHC performes breadth first search to find the next successor in this
+-- case.
+--
+-- No backtracking is ever performed, and thus EHC is incomplete in directed
+-- graphs.
 enforcedHillClimb :: forall a c t. (Foldable t, Hashable a, Ord a, Ord c)
                   => (a -> t a)     -- ^ Neighbor function
-                  -> (a -> c)       -- ^ Heuristic function
+                  -> (a -> c)       -- ^ Heuristic/Evaluation function
                   -> (a -> Bool)    -- ^ Goal check
                   -> a              -- ^ Starting node
                   -> Maybe [a]
