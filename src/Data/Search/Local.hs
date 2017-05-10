@@ -2,18 +2,25 @@
 module Data.Search.Local
 (
     hillClimb,
-    rrHillClimb
+    rrHillClimb,
+    enforcedHillClimb
 )
 where
 
+import Control.Arrow ((&&&))
 import Control.Monad
 import Control.Monad.Random.Class
 import Data.Foldable
+import Data.Hashable
+import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Ord
-import Data.List.NonEmpty (NonEmpty)
+import Numeric.Natural
 import System.Random (Random)
 
-import Numeric.Natural
+import Data.Search.Forward.NonOptimal (bfs)
+
+import qualified Data.List.NonEmpty as N
+
 
 -- | Perform __hill climbing optimization__ on a (discrete) state space given by
 -- a neighbor function. The evaluation function determines the value of each
@@ -69,3 +76,23 @@ rrHillClimb n neighbor eval =
     maximumBy (comparing eval) <$> replicateM (fromIntegral n) go
     where go = hillClimb neighbor eval <$> getRandom
 {-# INLINABLE rrHillClimb #-}
+
+enforcedHillClimb :: forall a c t. (Foldable t, Hashable a, Ord a, Ord c)
+                  => (a -> t a)     -- ^ Neighbor function
+                  -> (a -> c)       -- ^ Heuristic function
+                  -> (a -> Bool)    -- ^ Goal check
+                  -> a              -- ^ Starting node
+                  -> Maybe [a]
+enforcedHillClimb neighbor heuristic goal root = ehc root (heuristic root)
+    where ehc :: a -> c -> Maybe [a]
+          ehc u h
+              | goal u    = Just [u] 
+              | otherwise = do
+                    (us, h') <- ehcBfs u h
+                    let u' = N.last us
+                    (N.init us ++) <$> ehc u' h'
+
+          ehcBfs :: a -> c -> Maybe (NonEmpty a, c)
+          ehcBfs u h = (id &&& heuristic . N.last) 
+                   <$> (nonEmpty =<< bfs neighbor (\x -> heuristic x < h) u)
+{-# INLINABLE enforcedHillClimb #-}
