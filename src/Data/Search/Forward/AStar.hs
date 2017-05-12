@@ -122,8 +122,8 @@ instance Ord l => Monoid (AltMin l r) where
     mappend (AltMin (Left _)) (AltMin (Right y)) = AltMin (Right y)
     mappend (AltMin (Left x)) (AltMin (Left y)) = AltMin (Left $ x <> y)
 
--- | Iterative Deepening A*. This function does /not/ work with 0-cost loops,
--- i.e. nodes having themselves as 0 cost successors.
+-- | __Iterative Deepening A*__. This function does /not/ work with 0-cost
+-- loops, i.e. nodes having themselves as 0 cost successors.
 idastar :: forall a b c t. (Functor t, Foldable t, Ord c, Num c)
         => (a -> t (a, b, c))         -- ^ Neighbor function
         -> (a -> c)                   -- ^ Heuristic function

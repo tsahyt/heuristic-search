@@ -1,8 +1,8 @@
-name:                forward-search
+name:                heuristic-search
 version:             0.1.0.0
-synopsis:            Informed Forward Search Algorithms
+synopsis:            Informed Search Algorithms
 description:         See README.rst
-homepage:            https://github.com/githubuser/forward-search#readme
+homepage:            https://github.com/tsahyt/heuristic-search#readme
 license:             LGPL-3
 license-file:        LICENSE
 author:              Paul Ogris
@@ -37,9 +37,9 @@ benchmark bench
   type:                exitcode-stdio-1.0
   main-is:             Bench.hs
   ghc-options:         -Wall -O2
-  build-depends:       base >= 4.7 && < 5, forward-search, criterion
+  build-depends:       base >= 4.7 && < 5, heuristic-search, criterion
   default-language:    Haskell2010
 
 source-repository head
   type:     git
-  location: https://github.com/tsahyt/forward-search
+  location: https://github.com/tsahyt/heuristic-search
