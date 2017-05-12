@@ -4,7 +4,9 @@ module Data.Search.Local
     hillClimb,
     rrHillClimb,
     enforcedHillClimb,
-    simulatedAnnealing
+    simulatedAnnealing,
+    expCooling,
+    linearCooling
 )
 where
 
@@ -109,6 +111,13 @@ enforcedHillClimb neighbor heuristic goal root = ehc root (heuristic root)
                    <$> (nonEmpty =<< bfs neighbor (\x -> heuristic x < h) u)
 {-# INLINABLE enforcedHillClimb #-}
 
+-- | __Simulated Annealing__ approximates the global optimum of a given function
+-- by allowing progressively less random jumps as the search progresses. How
+-- fast this cooldown happens is determined by the cooling map.
+--
+-- When used with a sufficiently large initial temperature, simulated annealing
+-- converges towards the global optimum. However, in the worst case this can
+-- take a quadratic amount of steps in the size of the state space!
 simulatedAnnealing :: forall a c f t m. 
                       (MonadRandom m, Foldable f, Real t, Ord t, Random c, 
                        Floating c, Real c, Ord c)
@@ -133,3 +142,11 @@ simulatedAnnealing temp neighbor eval cooling root =
                           else pure (x, fx)
                   go (succ i) next fnext (cooling i t)
 {-# INLINABLE simulatedAnnealing #-}
+
+-- | Exponential cooling scheme for 'simulatedAnnealing'.
+expCooling :: Num t => t -> Natural -> t -> t
+expCooling c _ t = c * t
+
+-- | Linear cooling scheme for 'simulatedAnnealing'
+linearCooling :: Num t => t -> Natural -> t -> t
+linearCooling c _ t = t - c
