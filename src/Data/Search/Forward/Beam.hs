@@ -68,6 +68,12 @@ nextView b = do
                }
     return (x, b')
 
+-- | __Beam search__. There are a variety of beam search variations to be found
+-- in the literature, some of which have a global beam, and some of which limit
+-- expansion per level. The variation here always keeps the @k@ best successors
+-- /globally/. it otherwise acts exactly like breadth first search.
+--
+-- It is not optimal in the general case.
 beam :: forall a c t. (Foldable t, Hashable a, Ord a, Ord c)
      => Natural                     -- ^ Beam width
      -> (a -> t a)                  -- ^ Successor function
