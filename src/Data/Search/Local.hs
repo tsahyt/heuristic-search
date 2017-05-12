@@ -3,7 +3,8 @@ module Data.Search.Local
 (
     hillClimb,
     rrHillClimb,
-    enforcedHillClimb
+    enforcedHillClimb,
+    simulatedAnnealing
 )
 where
 
@@ -107,3 +108,28 @@ enforcedHillClimb neighbor heuristic goal root = ehc root (heuristic root)
           ehcBfs u h = (id &&& heuristic . N.last) 
                    <$> (nonEmpty =<< bfs neighbor (\x -> heuristic x < h) u)
 {-# INLINABLE enforcedHillClimb #-}
+
+simulatedAnnealing :: forall a c f t m. 
+                      (MonadRandom m, Foldable f, Real t, Ord t, Random c, 
+                       Floating c, Real c, Ord c)
+                   => t                     -- ^ Initial temperature
+                   -> (a -> f a)            -- ^ Neighbor function
+                   -> (a -> c)              -- ^ Evaluation function
+                   -> (Natural -> t -> t)   -- ^ Cooling map
+                   -> a                     -- ^ Initial state
+                   -> m a
+simulatedAnnealing temp neighbor eval cooling root = 
+    go 0 root (eval root) temp
+    where go :: Natural -> a -> c -> t -> m a
+          go i x fx t
+              | t == 0 = pure x
+              | otherwise = do
+                  x' <- uniform $ neighbor x
+                  let fx' = eval x'
+                  (next, fnext) <- if fx' < fx then pure (x', fx') else do
+                      r <- getRandomR (0,1)
+                      if r < exp ((fx - fx') / realToFrac t) 
+                          then pure (x', fx') 
+                          else pure (x, fx)
+                  go (succ i) next fnext (cooling i t)
+{-# INLINABLE simulatedAnnealing #-}
