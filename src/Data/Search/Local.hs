@@ -6,7 +6,8 @@ module Data.Search.Local
     enforcedHillClimb,
     simulatedAnnealing,
     expCooling,
-    linearCooling
+    linearCooling,
+    beamLocal'
 )
 where
 
@@ -21,6 +22,7 @@ import Numeric.Natural
 import System.Random (Random)
 
 import Data.Search.Forward.NonOptimal (bfs)
+import Data.Search.Forward.Beam (beamLocal')
 
 import qualified Data.List.NonEmpty as N
 
