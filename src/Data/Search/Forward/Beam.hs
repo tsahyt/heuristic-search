@@ -5,7 +5,7 @@
 {-# LANGUAGE MultiWayIf #-}
 module Data.Search.Forward.Beam
 (
-    beam
+    beamLocal
 )
 where
 
@@ -22,71 +22,74 @@ import Numeric.Natural
 import qualified Data.HashPSQ as Q
 import qualified Data.HashMap.Strict as HM
 
-data Beam a c = Beam 
-    { beamLimit :: Word64
-    , beamSize  :: Word64
-    , beamCount :: Word64
-    , beamWorst :: HashPSQ a (Down c) ()
-    , beamFifo  :: HashPSQ a Word64 ()
+data LBeam a c = LBeam 
+    { lbeamLimit :: Word64
+    , lbeamSize  :: Word64
+    , lbeamCount :: Word64
+    , lbeamWorst :: HashPSQ a (Down c) ()
+    , lbeamFifo  :: HashPSQ a Word64 ()
     }
 
-empty :: Natural -> Beam a c
-empty n = Beam (fromIntegral n) 0 0 Q.empty Q.empty
+empty :: Natural -> LBeam a c
+empty n = LBeam (fromIntegral n) 0 0 Q.empty Q.empty
 
-insert :: (Hashable a, Ord a, Ord c) => a -> c -> Beam a c -> Beam a c
+insert :: (Hashable a, Ord a, Ord c) => a -> c -> LBeam a c -> LBeam a c
 insert a c b
-    | beamSize b < beamLimit b =
-        let w' = Q.insert a (Down c) () $ beamWorst b
-            f' = Q.insert a (beamCount b) () $ beamFifo b
-         in b { beamSize  = succ (beamSize b)
-              , beamCount = succ (beamCount b)
-              , beamWorst = w'
-              , beamFifo  = f' }
+    | lbeamSize b < lbeamLimit b =
+        let w' = Q.insert a (Down c) () $ lbeamWorst b
+            f' = Q.insert a (lbeamCount b) () $ lbeamFifo b
+         in b { lbeamSize  = succ (lbeamSize b)
+              , lbeamCount = succ (lbeamCount b)
+              , lbeamWorst = w'
+              , lbeamFifo  = f' }
     | otherwise =
-        case Q.findMin (beamWorst b) of
+        case Q.findMin (lbeamWorst b) of
             Nothing  -> b
             Just (_, (Down worst), _) ->
                 if c > worst then b else insert a c (kick b)
 
-kick :: (Hashable a, Ord a, Ord c) => Beam a c -> Beam a c
+kick :: (Hashable a, Ord a, Ord c) => LBeam a c -> LBeam a c
 kick b
-    | Just (x, _, _, w') <- Q.minView (beamWorst b) =
-        let f' = Q.delete x (beamFifo b)
-         in b { beamSize  = pred (beamSize b)
-              , beamWorst = w'
-              , beamFifo  = f'
+    | Just (x, _, _, w') <- Q.minView (lbeamWorst b) =
+        let f' = Q.delete x (lbeamFifo b)
+         in b { lbeamSize  = pred (lbeamSize b)
+              , lbeamWorst = w'
+              , lbeamFifo  = f'
               }
     | otherwise = b
 
-nextView :: (Hashable a, Ord a, Ord c) => Beam a c -> Maybe (a, Beam a c)
+nextView :: (Hashable a, Ord a, Ord c) => LBeam a c -> Maybe (a, LBeam a c)
 nextView b = do
-    (x, _, _, f') <- Q.minView (beamFifo b)
-    let w' = Q.delete x (beamWorst b)
-        b' = b { beamSize  = pred (beamSize b)
-               , beamWorst = w'
-               , beamFifo  = f'
+    (x, _, _, f') <- Q.minView (lbeamFifo b)
+    let w' = Q.delete x (lbeamWorst b)
+        b' = b { lbeamSize  = pred (lbeamSize b)
+               , lbeamWorst = w'
+               , lbeamFifo  = f'
                }
     return (x, b')
 
--- | __Beam search__. There are a variety of beam search variations to be found
--- in the literature, some of which have a global beam, and some of which limit
--- expansion per level. The variation here always keeps the @k@ best successors
--- /globally/. it otherwise acts exactly like breadth first search.
+-- | __Beam local search__. Instead of keeping just one state in memory, this
+-- algorithm always keeps the @k@ best steps in memory, always proceeding to the
+-- currently best step. Note that this is not equivalent to @k@ hill climbing
+-- steps, as the algorithm can and will jump between branches. It is essentially
+-- a breadth first search with a limited and self ordering open list.
 --
--- It is not optimal in the general case.
-beam :: forall a c t. (Foldable t, Hashable a, Ord a, Ord c)
-     => Natural                     -- ^ Beam width
-     -> (a -> t a)                  -- ^ Successor function
-     -> (a -> c)                    -- ^ Heuristic function
-     -> (a -> Bool)                 -- ^ Goal check
-     -> a                           -- ^ Starting node
-     -> Maybe [a]
-beam width neighbor heuristic goal root = 
+-- For @k = 1@, this is equivalent to hill climbing. For @k = inf@, it becomes
+-- (heuristic) breadth first search. When you need @k = 1@, the 'hillClimb'
+-- family of functions will perform much better.
+beamLocal :: forall a c t. (Foldable t, Hashable a, Ord a, Ord c)
+          => Natural                     -- ^ Beam width
+          -> (a -> t a)                  -- ^ Successor function
+          -> (a -> c)                    -- ^ Heuristic function
+          -> (a -> Bool)                 -- ^ Goal check
+          -> a                           -- ^ Starting node
+          -> Maybe [a]
+beamLocal width neighbor heuristic goal root = 
     let q0 = insert root (heuristic root) (empty width)
         (x, (m, _)) = runState search (HM.empty, q0)
      in x >>= fmap reverse . reconstruct m
 
-    where search :: State (HashMap a a, Beam a c) (Maybe a)
+    where search :: State (HashMap a a, LBeam a c) (Maybe a)
           search = nextView <$> gets snd >>= \case
               Nothing -> pure Nothing
               Just (x, b) -> if goal x then pure (Just x) else do
