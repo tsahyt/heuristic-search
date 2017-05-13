@@ -5,7 +5,8 @@
 {-# LANGUAGE MultiWayIf #-}
 module Data.Search.Forward.Beam
 (
-    beamLocal
+    beamLocal,
+    beamLocal',
 )
 where
 
@@ -77,6 +78,9 @@ nextView b = do
 -- For @k = 1@, this is equivalent to hill climbing. For @k = inf@, it becomes
 -- (heuristic) breadth first search. When you need @k = 1@, the 'hillClimb'
 -- family of functions will perform much better.
+--
+-- 'beamLocal' keeps a map of all visited nodes in memory for purposes of
+-- reconstruction.
 beamLocal :: forall a c t. (Foldable t, Hashable a, Ord a, Ord c)
           => Natural                     -- ^ Beam width
           -> (a -> t a)                  -- ^ Successor function
@@ -107,3 +111,24 @@ beamLocal width neighbor heuristic goal root =
               | x == root = Just [x]
               | Just x' <- x `HM.lookup` m = (x :) <$> reconstruct m x'
               | otherwise = Nothing
+
+-- | Like 'beamLocal', but a true local search variant. This version does not
+-- keep visited nodes in memory and does no path reconstruction!
+beamLocal' :: forall a c t. (Foldable t, Hashable a, Ord a, Ord c)
+           => Natural                     -- ^ Beam width
+           -> (a -> t a)                  -- ^ Successor function
+           -> (a -> c)                    -- ^ Heuristic function
+           -> (a -> Bool)                 -- ^ Goal check
+           -> a                           -- ^ Starting node
+           -> Maybe a
+beamLocal' width neighbor heuristic goal root = 
+    let q0 = insert root (heuristic root) (empty width)
+     in evalState search q0
+
+    where search :: State (LBeam a c) (Maybe a)
+          search = nextView <$> get >>= \case
+              Nothing -> pure Nothing
+              Just (x, b) -> if goal x then pure (Just x) else do
+                  let xs = neighbor x
+                  put $ foldl' (flip (ap insert heuristic)) b xs
+                  search
