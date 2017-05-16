@@ -17,20 +17,26 @@ In no particular order
 * Dijkstra (specialization of A*)
 * RBFS
 * DFS
+
   - Depth first Graph search
   - Depth first Tree search
   - Depth first traversal with duplicate detection
   - Depth first traversal without duplicate detection
+
 * BFS
+
   - Breadth first Graph search
   - Breadth first traversal with duplicate detection
   - Breadth first traversal without duplicate detection
+
 * Iterative Deepening Search
 * Depth limited search
 * Hill-climbing search
+
   - Standard hill-climbing
   - Anytime variant
   - Random restart hill-climbing
+
 * Enforced Hill-climbing
 * Simulated Annealing
 * Beam local search
