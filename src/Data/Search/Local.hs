@@ -4,6 +4,7 @@ module Data.Search.Local
     hillClimb,
     rrHillClimb,
     enforcedHillClimb,
+    enforcedHillClimb',
     simulatedAnnealing,
     expCooling,
     linearCooling,
@@ -21,7 +22,7 @@ import Data.Ord
 import Numeric.Natural
 import System.Random (Random)
 
-import Data.Search.Forward.NonOptimal (bfs')
+import Data.Search.Forward.NonOptimal (bfs, bfs')
 import Data.Search.Forward.Beam (beamLocal')
 
 import qualified Data.List.NonEmpty as N
@@ -93,13 +94,39 @@ rrHillClimb n neighbor eval =
 --
 -- No backtracking is ever performed, and thus EHC is incomplete in directed
 -- graphs.
-enforcedHillClimb :: forall a c t. (Foldable t, Hashable a, Ord a, Ord c)
-                  => (a -> t a)     -- ^ Neighbor function
-                  -> (a -> c)       -- ^ Heuristic/Evaluation function
-                  -> (a -> Bool)    -- ^ Goal check
-                  -> a              -- ^ Starting node
-                  -> Maybe [a]
+enforcedHillClimb :: forall a b c t. (Functor t, Foldable t, 
+                                      Hashable a, Ord a, Ord c)
+                  => (a -> t (a, b))     -- ^ Neighbor function
+                  -> (a -> c)            -- ^ Heuristic/Evaluation function
+                  -> (a -> Bool)         -- ^ Goal check
+                  -> a                   -- ^ Starting node
+                  -> Maybe [b]
 enforcedHillClimb neighbor heuristic goal root = ehc root (heuristic root)
+    where ehc :: a -> c -> Maybe [b]
+          ehc u h
+              | goal u    = Just [] 
+              | otherwise = do
+                    (us, h') <- ehcBfs u h
+                    let p  = toList . fmap snd $ us
+                        u' = fst $ N.last us
+                    (p ++) <$> ehc u' h'
+
+          ehcBfs :: a -> c -> Maybe (NonEmpty (a, b), c)
+          ehcBfs u h = (id &&& heuristic . fst . N.last) 
+                   <$> (nonEmpty =<< bfs neighbor' ((< h) . heuristic) u)
+          
+          neighbor' :: a -> t (a, (a, b))
+          neighbor' = fmap (\(a, b) -> (a, (a, b))) . neighbor
+{-# INLINABLE enforcedHillClimb #-}
+
+-- | Like 'enforcedHillClimb' but for unlabelled graphs.
+enforcedHillClimb' :: forall a c t. (Foldable t, Hashable a, Ord a, Ord c)
+                   => (a -> t a)     -- ^ Neighbor function
+                   -> (a -> c)       -- ^ Heuristic/Evaluation function
+                   -> (a -> Bool)    -- ^ Goal check
+                   -> a              -- ^ Starting node
+                   -> Maybe [a]
+enforcedHillClimb' neighbor heuristic goal root = ehc root (heuristic root)
     where ehc :: a -> c -> Maybe [a]
           ehc u h
               | goal u    = Just [u] 
@@ -111,7 +138,7 @@ enforcedHillClimb neighbor heuristic goal root = ehc root (heuristic root)
           ehcBfs :: a -> c -> Maybe (NonEmpty a, c)
           ehcBfs u h = (id &&& heuristic . N.last) 
                    <$> (nonEmpty =<< bfs' neighbor (\x -> heuristic x < h) u)
-{-# INLINABLE enforcedHillClimb #-}
+{-# INLINABLE enforcedHillClimb' #-}
 
 -- | __Simulated Annealing__ approximates the global optimum of a given function
 -- by allowing progressively less random jumps as the search progresses. How
