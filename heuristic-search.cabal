@@ -23,13 +23,13 @@ library
                        Data.Search.Local
   ghc-options:         -Wall -O2
   build-depends:       base >= 4.7 && < 5,
-                       unordered-containers,
-                       deque >= 0.2,
-                       psqueues,
-                       hashable,
-                       mtl,
-                       MonadRandom,
-                       random
+                       unordered-containers >= 0.2.8.0 && < 0.3,
+                       deque >= 0.2 && < 0.3,
+                       psqueues >= 0.2.2.0 && < 0.3,
+                       hashable >=1.2.1 && <1.3,
+                       mtl >= 2.2.1 && < 3,
+                       MonadRandom >= 0.5.1 && < 0.6,
+                       random >= 1.1 && < 1.2
   default-language:    Haskell2010
 
 benchmark bench
