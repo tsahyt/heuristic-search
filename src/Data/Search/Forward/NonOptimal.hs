@@ -230,7 +230,7 @@ bfs' suc goal root =
      in x >>= fmap reverse . reconstruct m
 
     where search :: State (HashMap a a, Deque a) (Maybe a)
-          search = DQ.uncons <$> gets snd >>= \case
+          search = DQ.unsnoc <$> gets snd >>= \case
               Nothing -> pure Nothing
               Just (x, q) -> if goal x then pure (Just x) else do
                   m <- gets fst
@@ -258,14 +258,14 @@ bfs suc goal root =
      in x >>= fmap reverse . reconstruct m
 
     where search :: State (HashMap a (a, b), Deque a) (Maybe a)
-          search = DQ.uncons <$> gets snd >>= \case
+          search = DQ.unsnoc <$> gets snd >>= \case
               Nothing -> pure Nothing
               Just (x, q) -> if goal x then pure (Just x) else do
                   m <- gets fst
                   let xs = filter (not . (`HM.member` m) . fst) 
                          . toList . suc $ x
                   modify $ bimap 
-                      (\z -> foldl' (\hm from -> HM.insert x from hm) z xs)
+                      (\z -> foldl' (\hm (t,b) -> HM.insert t (x,b) hm) z xs)
                       (DQ.prepend . DQ.fromList . map fst . toList $ xs)
                       . second (const q)
                   search
