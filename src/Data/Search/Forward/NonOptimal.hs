@@ -10,17 +10,21 @@ module Data.Search.Forward.NonOptimal
     dft,
     dftG,
     dfs,
+    dfs',
     dfsG,
 
     -- * Depth Limited
     dlt,
     dls,
+    dls',
     ids,
+    ids',
 
     -- * Breadth First
     bft,
     bftT,
-    bfs
+    bfs,
+    bfs'
 )
 where
 
@@ -82,19 +86,29 @@ dfsG suc goal = go HS.empty
                      in (n :) <$> asum [ go v' x | x <- toList (suc n) ]
 {-# INLINABLE dfsG #-}
 
--- | 'dfs' provides a depth first search of a graph with unlabeled edges.
+-- | 'dfs' provides a depth first search of a graph with labeled edges.
 -- Returns exactly the discovered path from root to the first goal, if any. In
 -- the presence of cycles, this function may loop indefinitely.
-dfs :: Foldable t
-    => (a -> t a)          -- ^ Successor function
+dfs :: (Functor t, Foldable t)
+    => (a -> t (a, b))     -- ^ Successor function
     -> (a -> Bool)         -- ^ Goal check
     -> a                   -- ^ Starting node
-    -> Maybe [a]
-dfs suc goal = go
+    -> Maybe [b]
+dfs suc goal root = mapMaybe snd <$> 
+    dfs' (fmap (fmap pure) . suc . fst) (goal . fst) (root, Nothing)
+{-# INLINE dfs #-}
+
+-- | Like 'dfs', but for unlabelled edges.
+dfs' :: Foldable t
+     => (a -> t a)          -- ^ Successor function
+     -> (a -> Bool)         -- ^ Goal check
+     -> a                   -- ^ Starting node
+     -> Maybe [a]
+dfs' suc goal = go
     where go n 
               | goal n    = Just [n]
               | otherwise = (n :) <$> asum [ go x | x <- toList (suc n) ]
-{-# INLINE dfs #-}
+{-# INLINE dfs' #-}
 
 -- | 'dlt' performs a depth limited traversal. Nodes are returned in the order
 -- they are enountered.
@@ -111,22 +125,52 @@ dlt limit suc = go limit
           go l x = toList (suc x) >>= go (pred l)
 {-# INLINE dlt #-}
 
--- | 'dfs' provides a depth limited search of a graph with unlabeled edges.
+-- | 'dls' provides a depth limited search of a graph with labeled edges.
 -- Returns exactly the discovered path from root to the first goal, if any. Due
 -- to the depth limit, this function can cope with cycles.
-dls :: Foldable t
+dls :: (Functor t, Foldable t) 
     => Natural              -- ^ Depth limit
-    -> (a -> t a)           -- ^ Successor function
+    -> (a -> t (a, b))      -- ^ Successor function
     -> (a -> Bool)          -- ^ Goal check
     -> a                    -- ^ Starting node
-    -> Maybe [a]
-dls limit suc goal = go limit
+    -> Maybe [b]
+dls limit suc goal root = mapMaybe snd <$> 
+    dls' limit (fmap (fmap pure) . suc . fst) (goal . fst) (root, Nothing)
+{-# INLINE dls #-}
+
+-- | 'dls'' provides a depth limited search of a graph with unlabeled edges.
+-- Returns exactly the discovered path from root to the first goal, if any. Due
+-- to the depth limit, this function can cope with cycles.
+dls' :: Foldable t
+     => Natural              -- ^ Depth limit
+     -> (a -> t a)           -- ^ Successor function
+     -> (a -> Bool)          -- ^ Goal check
+     -> a                    -- ^ Starting node
+     -> Maybe [a]
+dls' limit suc goal = go limit
     where go 0 _ = Nothing
           go l n 
               | goal n    = Just [n]
               | otherwise = (n :) <$> asum 
                                 [ go (pred l) x | x <- toList (suc n) ]
-{-# INLINE dls #-}
+{-# INLINE dls' #-}
+
+-- | 'ids' performs iterative deepening search of a graph with labeled edges.
+-- Returns exactly the discovered path from root to the first goal. If there is
+-- no path, it will loop indefinitely!
+--
+-- An upper bound on the search depth can be set optionally with the first
+-- parameter.
+ids :: (Functor t, Foldable t)
+    => Maybe Natural
+    -> (a -> t (a, b)) 
+    -> (a -> Bool) 
+    -> a 
+    -> Maybe [b]
+ids limit suc goal root = 
+    listToMaybe $ mapMaybe (\l -> dls l suc goal root) 
+                           (maybe [1..] (\x -> [1..x]) limit)
+{-# INLINEABLE ids #-}
 
 -- | 'ids' performs iterative deepening search of a graph with unlabeled edges.
 -- Returns exactly the discovered path from root to the first goal. If there is
@@ -134,16 +178,16 @@ dls limit suc goal = go limit
 --
 -- An upper bound on the search depth can be set optionally with the first
 -- parameter.
-ids :: Foldable t 
-    => Maybe Natural
-    -> (a -> t a) 
-    -> (a -> Bool) 
-    -> a 
-    -> Maybe [a]
-ids limit suc goal root = 
-    listToMaybe $ mapMaybe (\l -> dls l suc goal root) 
+ids' :: Foldable t 
+     => Maybe Natural
+     -> (a -> t a) 
+     -> (a -> Bool) 
+     -> a 
+     -> Maybe [a]
+ids' limit suc goal root = 
+    listToMaybe $ mapMaybe (\l -> dls' l suc goal root) 
                            (maybe [1..] (\x -> [1..x]) limit)
-{-# INLINEABLE ids #-}
+{-# INLINEABLE ids' #-}
 
 -- | 'bft' performs a breadth first traversal of a graph with unlabeled edges.
 -- Nodes are returned in the order they are visited.
@@ -176,12 +220,12 @@ bftT suc = go . toList
 -- Breadth first search is optimal if the path cost is a nondecreasing function
 -- of the depth of the node. 'bfs' is placed in the "NonOptimal" module since
 -- costs cannot be arbitrary.
-bfs :: forall a t. (Foldable t, Hashable a, Eq a)
-    => (a -> t a)
-    -> (a -> Bool)
-    -> a
-    -> Maybe [a]
-bfs suc goal root = 
+bfs' :: forall a t. (Foldable t, Hashable a, Eq a)
+     => (a -> t a)
+     -> (a -> Bool)
+     -> a
+     -> Maybe [a]
+bfs' suc goal root = 
     let (x, (m, _)) = runState search (HM.empty, DQ.fromList . pure $ root)
      in x >>= fmap reverse . reconstruct m
 
@@ -202,4 +246,32 @@ bfs suc goal root =
           reconstruct m x
               | x == root = Just [x]
               | Just x' <- x `HM.lookup` m = (x :) <$> reconstruct m x'
+              | otherwise = Nothing
+
+bfs :: forall a b t. (Foldable t, Hashable a, Eq a)
+     => (a -> t (a, b))
+     -> (a -> Bool)
+     -> a
+     -> Maybe [b]
+bfs suc goal root = 
+    let (x, (m, _)) = runState search (HM.empty, DQ.fromList . pure $ root)
+     in x >>= fmap reverse . reconstruct m
+
+    where search :: State (HashMap a (a, b), Deque a) (Maybe a)
+          search = DQ.uncons <$> gets snd >>= \case
+              Nothing -> pure Nothing
+              Just (x, q) -> if goal x then pure (Just x) else do
+                  m <- gets fst
+                  let xs = filter (not . (`HM.member` m) . fst) 
+                         . toList . suc $ x
+                  modify $ bimap 
+                      (\z -> foldl' (\hm from -> HM.insert x from hm) z xs)
+                      (DQ.prepend . DQ.fromList . map fst . toList $ xs)
+                      . second (const q)
+                  search
+        
+          reconstruct :: HashMap a (a, b) -> a -> Maybe [b]
+          reconstruct m x
+              | x == root = Just []
+              | Just (x', l) <- x `HM.lookup` m = (l :) <$> reconstruct m x'
               | otherwise = Nothing

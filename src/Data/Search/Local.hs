@@ -21,7 +21,7 @@ import Data.Ord
 import Numeric.Natural
 import System.Random (Random)
 
-import Data.Search.Forward.NonOptimal (bfs)
+import Data.Search.Forward.NonOptimal (bfs')
 import Data.Search.Forward.Beam (beamLocal')
 
 import qualified Data.List.NonEmpty as N
@@ -110,7 +110,7 @@ enforcedHillClimb neighbor heuristic goal root = ehc root (heuristic root)
 
           ehcBfs :: a -> c -> Maybe (NonEmpty a, c)
           ehcBfs u h = (id &&& heuristic . N.last) 
-                   <$> (nonEmpty =<< bfs neighbor (\x -> heuristic x < h) u)
+                   <$> (nonEmpty =<< bfs' neighbor (\x -> heuristic x < h) u)
 {-# INLINABLE enforcedHillClimb #-}
 
 -- | __Simulated Annealing__ approximates the global optimum of a given function
