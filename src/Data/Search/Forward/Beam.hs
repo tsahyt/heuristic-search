@@ -3,6 +3,8 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
+
+{-# OPTIONS_GHC -funbox-strict-fields #-}
 module Data.Search.Forward.Beam
 (
     beamLocal,
@@ -24,9 +26,9 @@ import qualified Data.HashPSQ as Q
 import qualified Data.HashMap.Strict as HM
 
 data LBeam a c = LBeam 
-    { lbeamLimit :: Word64
-    , lbeamSize  :: Word64
-    , lbeamCount :: Word64
+    { lbeamLimit :: !Word64
+    , lbeamSize  :: !Word64
+    , lbeamCount :: !Word64
     , lbeamWorst :: HashPSQ a (Down c) ()
     , lbeamFifo  :: HashPSQ a Word64 ()
     }
