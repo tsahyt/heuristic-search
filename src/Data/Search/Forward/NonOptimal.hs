@@ -214,12 +214,7 @@ bftT suc = go . toList
           go (n:ns) = n : go (ns ++ toList (suc n))
 {-# INLINE bftT #-}
 
--- | 'bfs' performes a breadth first search of a graph with unlabeled edges.
--- Returns exactly the discovered path from root to the first goal, if any.
---
--- Breadth first search is optimal if the path cost is a nondecreasing function
--- of the depth of the node. 'bfs' is placed in the "NonOptimal" module since
--- costs cannot be arbitrary.
+-- | Like 'bfs' but for unlabelled graphs.
 bfs' :: forall a t. (Foldable t, Hashable a, Eq a)
      => (a -> t a)
      -> (a -> Bool)
@@ -248,6 +243,11 @@ bfs' suc goal root =
               | Just x' <- x `HM.lookup` m = (x :) <$> reconstruct m x'
               | otherwise = Nothing
 
+-- | 'bfs' performes a breadth first search of a graph with labeled edges.
+-- Returns exactly the discovered path from root to the first goal, if any.
+--
+-- Breadth first search is optimal if the path cost is a nondecreasing function
+-- of the depth of the node. 'bfs' assumes unit cost.
 bfs :: forall a b t. (Foldable t, Hashable a, Eq a)
      => (a -> t (a, b))
      -> (a -> Bool)
