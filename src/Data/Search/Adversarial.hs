@@ -9,13 +9,13 @@ module Data.Search.Adversarial
 )
 where
 
-import Data.Hashable
-import Data.Typeable
-import Data.Data
-import GHC.Generics
-import Data.Ord
 import Data.Bifunctor
+import Data.Data
 import Data.Foldable
+import Data.Hashable
+import Data.Inf
+import Data.Ord
+import GHC.Generics
 import Numeric.Natural
 
 data Player 
@@ -25,40 +25,50 @@ data Player
 
 instance Hashable Player
 
+turn :: Player -> Player
+turn MinPlayer = MaxPlayer
+turn MaxPlayer = MinPlayer
+
 -- | __Negmax__ (also called Negamax) algorithm for zero-sum games. Takes a
--- player dependent move function, a depth limit (ideally an even number), a
--- leaf evaluation function, and a leaf check. Operates from the view of the
--- maximizing player.
+-- player dependent move function, a depth limit (ideally an even number), and a
+-- leaf evaluation function. Operates from the view of the maximizing player.
 --
 -- Returns the best move as determined by the search from the starting node.
-negmax :: forall a b c t. (Foldable t, Functor t, Ord c, Num c)
+--
+-- Uses alpha beta pruning starting from the second level. This only works for
+-- well-behaved 'foldr' implementations, like the one for lists!
+negmax :: forall a b c t. (Foldable t, Ord c, Num c)
        => Natural                   -- ^ Depth limit
        -> (Player -> a -> t (a, b)) -- ^ Moves
        -> (a -> c)                  -- ^ Evaluation function
-       -> (a -> Bool)               -- ^ Terminal check
        -> a                         -- ^ Root node
        -> Maybe b
-negmax cutoff suc eval term root =
-    let xs = first (go (fromIntegral cutoff) False) <$> suc MaxPlayer root
+negmax cutoff suc eval root =
+    let xs = first (go (fromIntegral cutoff) MinPlayer (NegInf, PosInf)) 
+         <$> toList (suc MaxPlayer root)
      in if null xs 
         then Nothing 
         else Just . snd . maximumBy (comparing fst) $ xs
-    where go :: Int -> Bool -> a -> c
-          go 0 _ x = eval x
-          go d p x 
-              | term x = eval x
-              | otherwise =
-                    let xs = if p then suc MaxPlayer x else suc MinPlayer x
-                     in if null xs then eval x 
-                        else maximum 
-                      . fmap (negate . go (pred d) (not p) . fst) $ xs
+    where go :: Int -> Player -> (Inf c, Inf c) -> a -> Inf c
+          go 0 _ _ x = Fin $ eval x
+          go d p (alpha, beta) x =
+              let xs = suc p x
+                  f (a,_) next z
+                      | z >= beta = z
+                      | otherwise = next . max z . negate 
+                                  . go (pred d) (turn p) (-beta, -z)
+                                  $ a
+               in if null xs then Fin (eval x) else foldr f id xs alpha
 
 -- | __Minimax__ algorithm. Takes a depth limit (ideally even), a player
 -- dependent move function, leaf evaluation function, a terminal check, and a
 -- starting node. Operates from the view of the maximizing player.
 --
 -- Returns the best move as determined by the search from the starting node.
-minimax :: forall a b c t. (Foldable t, Functor t, Ord c, Num c)
+--
+-- Uses alpha beta pruning starting from the second level. This only works for
+-- well-behaved 'foldr' implementations, like the one for lists!
+minimax :: forall a b c t. (Foldable t, Ord c, Num c)
         => Natural                   -- ^ Depth limit
         -> (Player -> a -> t (a, b)) -- ^ Max player moves
         -> (a -> c)                  -- ^ Evaluation function
@@ -66,23 +76,30 @@ minimax :: forall a b c t. (Foldable t, Functor t, Ord c, Num c)
         -> a                         -- ^ Root node
         -> Maybe b
 minimax cutoff suc eval term root =
-    let xs = first (gomin (fromIntegral cutoff)) <$> suc MaxPlayer root
+    let xs = first (gomin (fromIntegral cutoff) (NegInf, PosInf)) 
+         <$> toList (suc MaxPlayer root)
      in if null xs 
         then Nothing 
         else Just . snd . maximumBy (comparing fst) $ xs
-    where gomax, gomin :: Int -> a -> c
-          gomax 0 x = eval x
-          gomax d x
-              | term x = eval x
+    where gomax, gomin :: Int -> (Inf c, Inf c) -> a -> Inf c
+          gomax 0 _ x = Fin $ eval x
+          gomax d (alpha, beta) x
+              | term x = Fin $ eval x
               | otherwise =
-                    let xs = suc MaxPlayer x
-                     in if null xs then eval x
-                        else maximum . fmap (gomin (pred d) . fst) $ xs
+                  let xs = suc MaxPlayer x
+                      f (a,_) next z
+                          | z >= beta = z
+                          | otherwise = 
+                              next . max z . gomin (pred d) (z, beta) $ a
+                   in foldr f id xs alpha
 
-          gomin 0 x = eval x
-          gomin d x
-              | term x = eval x
+          gomin 0 _ x = Fin $ eval x
+          gomin d (alpha, beta) x
+              | term x = Fin $ eval x
               | otherwise =
-                    let xs = suc MinPlayer x
-                     in if null xs then eval x
-                        else minimum . fmap (gomax (pred d) . fst) $ xs
+                  let xs = suc MaxPlayer x
+                      f (a,_) next z
+                          | z <= alpha = z
+                          | otherwise  = 
+                              next . min z . gomax (pred d) (alpha, z) $ a
+                   in foldr f id xs beta

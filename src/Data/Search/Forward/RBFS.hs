@@ -7,17 +7,10 @@ module Data.Search.Forward.RBFS
 )
 where
 
+import Data.Inf
 import Data.Foldable
 import Data.Hashable
 import qualified Data.HashPSQ as Q
-
-data Inf a = Inf | Fin !a
-    deriving (Show, Eq)
-
-instance Ord a => Ord (Inf a) where
-    Inf   <= _     = False
-    _     <= Inf   = True
-    Fin a <= Fin b = a <= b
 
 -- | __Recursive best first search__. The neighbor function describes all
 -- outgoing arcs from a given node of type @a@ as some 'Foldable' collection.
@@ -38,7 +31,7 @@ rbfs :: forall a b c t. (Foldable t, Hashable a, Ord a, Ord c, Num c)
      -> a                          -- ^ Starting node
      -> Maybe [b]
 rbfs neighbor heuristic goal root = 
-    case go root Inf (Fin $ heuristic root, 0) of
+    case go root PosInf (Fin $ heuristic root, 0) of
         Left  _ -> Nothing
         Right x -> Just x
 
@@ -55,11 +48,11 @@ rbfs neighbor heuristic goal root =
                   f' = max (Fin $ g' + heuristic a) f
                in (a, f', (b, g'))
 
-          loop _ (Q.minView -> Nothing) = Left Inf
+          loop _ (Q.minView -> Nothing) = Left PosInf
           loop fLimit (Q.minView -> Just (x, f, (b, g), q))
               | f > fLimit = Left f
               | otherwise =
-                  let alt = maybe Inf mid . Q.findMin $ q
+                  let alt = maybe PosInf mid . Q.findMin $ q
                    in case go x (min fLimit alt) (f, g) of
                           Left f' -> loop fLimit (Q.insert x f' (b, g) q)
                           Right z -> Right $ b : z
