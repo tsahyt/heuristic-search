@@ -40,3 +40,5 @@ In no particular order
 * Enforced Hill-climbing
 * Simulated Annealing
 * Beam local search
+* Minimax with Alpha-Beta Pruning
+* Negamax with Alpha-Beta Pruning
