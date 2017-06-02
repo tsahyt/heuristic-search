@@ -36,6 +36,7 @@ In no particular order
   - Standard hill-climbing
   - Anytime variant
   - Random restart hill-climbing
+  - Stochastic hill-climbing
 
 * Enforced Hill-climbing
 * Simulated Annealing

@@ -3,6 +3,7 @@ module Data.Search.Local
 (
     hillClimb,
     rrHillClimb,
+    stochasticHillClimb,
     enforcedHillClimb,
     enforcedHillClimb',
     simulatedAnnealing,
@@ -17,6 +18,7 @@ import Control.Monad
 import Control.Monad.Random.Class
 import Data.Foldable
 import Data.Hashable
+import Data.Bifunctor
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Ord
 import Numeric.Natural
@@ -62,7 +64,7 @@ atHillClimb neighbor eval start = go start (eval start)
     where go x c = 
               let (next, c') = maximumBy (comparing snd) 
                              . fmap (\z -> (z, eval z)) . neighbor $ x
-               in if c' <= c then x : go next c' else [x]
+               in if c' > c then x : go next c' else [x]
 {-# INLINE atHillClimb #-}
 
 -- | __Random restart hill climbing__. Utilizes 'hillClimb' underneath to
@@ -82,6 +84,28 @@ rrHillClimb n neighbor eval =
     maximumBy (comparing eval) <$> replicateM (fromIntegral n) go
     where go = hillClimb neighbor eval <$> getRandom
 {-# INLINABLE rrHillClimb #-}
+
+-- | __Stochastic hill climbing__. This variant chooses a random successor among
+-- all uphill moves, weighted by the steepness of the step. Converges more
+-- slowly than normal hill-climbing but can find better solutions in some state
+-- spaces.
+stochasticHillClimb 
+    :: forall m a c. (MonadRandom m, Ord a, Real c, Ord c)
+    => (a -> NonEmpty a)    -- ^ Neighbor function
+    -> (a -> c)             -- ^ Evaluation function 
+    -> a
+    -> m a
+stochasticHillClimb neighbor eval start = go start (eval start)
+    where go x c = do
+              x' <- weightedMay 
+                  . map (second toRational)
+                  . N.filter ((> c) . snd)
+                  . fmap (\z -> (z, eval z)) 
+                  . neighbor $ x
+              case x' of
+                  Nothing  -> pure x
+                  Just x'' -> let c' = eval x'' in 
+                      if c' > c then go x'' c' else pure x
 
 -- | __Enforced hill climbing__ is a hill-climbing variant that picks a
 -- successor note only if it has a strictly better heuristic evaluation than the
