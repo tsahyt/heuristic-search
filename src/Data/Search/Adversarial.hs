@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE BangPatterns #-}
 module Data.Search.Adversarial
 (
     Player (..),
@@ -51,7 +52,7 @@ negmax cutoff suc eval root =
         else Just . snd . maximumBy (comparing fst) $ xs
     where go :: Int -> Player -> (Inf c, Inf c) -> a -> Inf c
           go 0 _ _ x = Fin $ eval x
-          go d p (alpha, beta) x =
+          go d p (!alpha, !beta) x =
               let xs = suc p x
                   f (a,_) next z
                       | z >= beta = z
@@ -82,7 +83,7 @@ minimax cutoff suc eval root =
         else Just . snd . maximumBy (comparing fst) $ xs
     where gomax, gomin :: Int -> (Inf c, Inf c) -> a -> Inf c
           gomax 0 _ x = Fin $ eval x
-          gomax d (alpha, beta) x =
+          gomax d (!alpha, !beta) x =
               let xs = suc MaxPlayer x
                   f (a,_) next z
                       | z >= beta = z
@@ -91,7 +92,7 @@ minimax cutoff suc eval root =
                in if null xs then Fin (eval x) else foldr f id xs alpha
 
           gomin 0 _ x = Fin $ eval x
-          gomin d (alpha, beta) x =
+          gomin d (!alpha, !beta) x =
               let xs = suc MaxPlayer x
                   f (a,_) next z
                       | z <= alpha = z
