@@ -3,7 +3,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 module Data.Search.Adversarial
 (
-    Player,
+    Player (..),
     negmax,
     minimax
 )
