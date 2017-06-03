@@ -42,7 +42,7 @@ import qualified Data.List.NonEmpty as N
 -- Note that every state must have at least one successor state! However, having
 -- multiple similar successors is permitted. If multiple successors with the
 -- same value are encountered, no guarantee is made as to which will be picked.
-hillClimb :: forall a c. (Ord a, Ord c)
+hillClimb :: forall a c. Ord c
           => (a -> NonEmpty a)      -- ^ Neighbor function
           -> (a -> c)               -- ^ Evaluation function
           -> a                      -- ^ Starting node
@@ -56,7 +56,7 @@ hillClimb neighbor eval start = last $ atHillClimb neighbor eval start
 --
 -- Result is guaranteed to be non-empty as at least the starting node is
 -- contained.
-atHillClimb :: forall a c. (Ord a, Ord c)
+atHillClimb :: forall a c. Ord c
             => (a -> NonEmpty a)      -- ^ Neighbor function
             -> (a -> c)               -- ^ Evaluation function
             -> a                      -- ^ Starting node
@@ -75,7 +75,7 @@ atHillClimb neighbor eval start = go start (eval start)
 --
 -- When the iteration count is 0, a random state will be returned. This is done
 -- in order to keep the function total.
-rrHillClimb :: forall m a c. (MonadRandom m, Random a, Ord a, Ord c)
+rrHillClimb :: forall m a c. (MonadRandom m, Random a, Ord c)
             => Natural
             -> (a -> NonEmpty a)    -- ^ Neighbor function
             -> (a -> c)             -- ^ Evaluation function 
@@ -91,7 +91,7 @@ rrHillClimb n neighbor eval =
 -- slowly than normal hill-climbing but can find better solutions in some state
 -- spaces.
 stochasticHillClimb 
-    :: forall m a c. (MonadRandom m, Ord a, Real c, Ord c)
+    :: forall m a c. (MonadRandom m, Real c, Ord c)
     => (a -> NonEmpty a)    -- ^ Neighbor function
     -> (a -> c)             -- ^ Evaluation function 
     -> a
@@ -106,7 +106,7 @@ stochasticHillClimb neighbor eval start =
 -- Result is guaranteed to be non-empty as at least the starting node is
 -- contained.
 atStochasticHillClimb
-    :: forall m a c. (MonadRandom m, Ord a, Real c, Ord c)
+    :: forall m a c. (MonadRandom m, Real c, Ord c)
     => (a -> NonEmpty a)    -- ^ Neighbor function
     -> (a -> c)             -- ^ Evaluation function 
     -> a
