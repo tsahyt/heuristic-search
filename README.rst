@@ -33,10 +33,9 @@ In no particular order
 * Depth limited search
 * Hill-climbing search
 
-  - Standard hill-climbing
-  - Anytime variant
+  - Standard hill-climbing and anytime variant
   - Random restart hill-climbing
-  - Stochastic hill-climbing
+  - Stochastic hill-climbing and anytime variant
 
 * Enforced Hill-climbing
 * Simulated Annealing

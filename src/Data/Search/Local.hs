@@ -4,6 +4,7 @@ module Data.Search.Local
     hillClimb,
     rrHillClimb,
     stochasticHillClimb,
+    atStochasticHillClimb,
     enforcedHillClimb,
     enforcedHillClimb',
     simulatedAnnealing,
@@ -95,7 +96,22 @@ stochasticHillClimb
     -> (a -> c)             -- ^ Evaluation function 
     -> a
     -> m a
-stochasticHillClimb neighbor eval start = go start (eval start)
+stochasticHillClimb neighbor eval start = 
+    last <$> atStochasticHillClimb neighbor eval start
+
+-- | Anytime variant of 'stochasticHillClimb'. The result is the full sequence
+-- of visited states. This is only true anytime when run in a sufficiently lazy
+-- monad, in particular 'IO' does /not/ satisfy this property!
+--
+-- Result is guaranteed to be non-empty as at least the starting node is
+-- contained.
+atStochasticHillClimb
+    :: forall m a c. (MonadRandom m, Ord a, Real c, Ord c)
+    => (a -> NonEmpty a)    -- ^ Neighbor function
+    -> (a -> c)             -- ^ Evaluation function 
+    -> a
+    -> m [a]
+atStochasticHillClimb neighbor eval start = go start (eval start)
     where go x c = do
               x' <- weightedMay 
                   . map (second toRational)
@@ -103,9 +119,9 @@ stochasticHillClimb neighbor eval start = go start (eval start)
                   . fmap (\z -> (z, eval z)) 
                   . neighbor $ x
               case x' of
-                  Nothing  -> pure x
+                  Nothing  -> pure [x]
                   Just x'' -> let c' = eval x'' in 
-                      if c' > c then go x'' c' else pure x
+                      if c' > c then (x :) <$> go x'' c' else pure [x]
 
 -- | __Enforced hill climbing__ is a hill-climbing variant that picks a
 -- successor note only if it has a strictly better heuristic evaluation than the
