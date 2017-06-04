@@ -3,6 +3,7 @@ module Data.Search.Local
 (
     hillClimb,
     rrHillClimb,
+    atHillClimb,
     stochasticHillClimb,
     atStochasticHillClimb,
     enforcedHillClimb,
@@ -98,6 +99,7 @@ stochasticHillClimb
     -> m a
 stochasticHillClimb neighbor eval start = 
     last <$> atStochasticHillClimb neighbor eval start
+{-# INLINE stochasticHillClimb #-}
 
 -- | Anytime variant of 'stochasticHillClimb'. The result is the full sequence
 -- of visited states. This is only true anytime when run in a sufficiently lazy
@@ -108,7 +110,7 @@ stochasticHillClimb neighbor eval start =
 atStochasticHillClimb
     :: forall m a c. (MonadRandom m, Real c, Ord c)
     => (a -> NonEmpty a)    -- ^ Neighbor function
-    -> (a -> c)             -- ^ Evaluation function 
+    -> (a -> c)             -- ^ Evaluation function
     -> a
     -> m [a]
 atStochasticHillClimb neighbor eval start = go start (eval start)
@@ -120,8 +122,8 @@ atStochasticHillClimb neighbor eval start = go start (eval start)
                   . neighbor $ x
               case x' of
                   Nothing  -> pure [x]
-                  Just x'' -> let c' = eval x'' in 
-                      if c' > c then (x :) <$> go x'' c' else pure [x]
+                  Just x'' -> (x :) <$> go x'' (eval x'')
+{-# INLINABLE atStochasticHillClimb #-}
 
 -- | __Enforced hill climbing__ is a hill-climbing variant that picks a
 -- successor note only if it has a strictly better heuristic evaluation than the
