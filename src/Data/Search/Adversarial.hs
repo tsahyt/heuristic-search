@@ -10,6 +10,7 @@ module Data.Search.Adversarial
 )
 where
 
+import Control.Parallel.Strategies
 import Data.Bifunctor
 import Data.Data
 import Data.Foldable
@@ -45,8 +46,9 @@ negmax :: forall a b c t. (Foldable t, Ord c, Num c)
        -> a                         -- ^ Root node
        -> Maybe b
 negmax cutoff suc eval root =
-    let xs = first (go (fromIntegral cutoff) MinPlayer (NegInf, PosInf)) 
-         <$> toList (suc MaxPlayer root)
+    let xs = (first (go (fromIntegral cutoff) MinPlayer (NegInf, PosInf)) 
+         <$> toList (suc MaxPlayer root))
+         `using` parListChunk 8 (evalTuple2 rpar rseq)
      in if null xs 
         then Nothing 
         else Just . snd . maximumBy (comparing fst) $ xs
@@ -76,8 +78,9 @@ minimax :: forall a b c t. (Foldable t, Ord c, Num c)
         -> a                         -- ^ Root node
         -> Maybe b
 minimax cutoff suc eval root =
-    let xs = first (gomin (fromIntegral cutoff) (NegInf, PosInf)) 
-         <$> toList (suc MaxPlayer root)
+    let xs = (first (gomin (fromIntegral cutoff) (NegInf, PosInf)) 
+         <$> toList (suc MaxPlayer root))
+         `using` parListChunk 8 (evalTuple2 rpar rseq)
      in if null xs 
         then Nothing 
         else Just . snd . maximumBy (comparing fst) $ xs
