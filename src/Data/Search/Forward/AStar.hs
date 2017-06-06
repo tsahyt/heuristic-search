@@ -2,6 +2,7 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 module Data.Search.Forward.AStar 
 (
     astar,
@@ -13,14 +14,17 @@ module Data.Search.Forward.AStar
 )
 where
 
+import Control.Monad.ST
+import Control.Monad
+
 import Data.Bifunctor
 import Data.Foldable
 import Data.Semigroup
 import Data.Hashable
-import Data.HashMap.Lazy (HashMap)
+import Data.HashTable.ST.Basic (HashTable)
 import Data.HashPSQ (HashPSQ)
 
-import qualified Data.HashMap.Lazy as M
+import qualified Data.HashTable.ST.Basic as T
 import qualified Data.HashPSQ as Q
 
 -- | __A* search algorithm__ for graphs generalized to functions. The neighbor
@@ -45,27 +49,37 @@ astar :: forall a b c t. (Foldable t, Hashable a, Ord a, Ord c, Num c)
       -> Maybe [b]
 astar neighbor heuristic goal root = 
     let h0 = heuristic root 
-     in go (Q.singleton root h0 0) M.empty
+     in runST $ do
+            ht <- T.new
+            go (Q.singleton root h0 0) ht
 
-    where go :: HashPSQ a c c -> HashMap a (a, b, c) -> Maybe [b]
-          go (Q.minView -> Nothing) _ = Nothing
+    where go :: HashPSQ a c c -> HashTable s a (a, b, c) -> ST s (Maybe [b])
+          go (Q.minView -> Nothing) _ = pure Nothing
           go (Q.minView -> Just (!x, _, !g, q)) past
-              | goal x    = Just . reverse $ reconstruct past x
-              | otherwise = 
+              | goal x    = Just . reverse <$> reconstruct past x
+              | otherwise = do
                   let xs = neighbor x
-                      (!q', !p') = foldl' 
-                          (\z (!y, !l, !c) -> bimap 
-                              (alter' (updateQ (g + heuristic y) (g + c)) y) 
-                              (M.alter (updateM x l (g + c)) y) z) 
-                          (q, past) xs
-                   in go q' p'
+                  q' <- foldForM q xs $ \z (y, l, c) -> do
+                      previousBest <- T.lookup past y
+                      case previousBest of
+                          Nothing -> 
+                              T.insert past y (x, l, c)
+                          Just (_, _, c') -> 
+                              when (c < c') $ T.insert past y (x, l, c)
+                      return $ alter' (updateQ (g + heuristic y) (g + c)) y z
+                  go q' past
           go _ _ = error "impossible"
-          
+                  
           reconstruct past x
-              | x == root = []
-              | Just (!x',!l,_) <- M.lookup x past = l : reconstruct past x'
-              | otherwise = []
+              | x == root = pure []
+              | otherwise = T.lookup past x >>= \case
+                  Nothing       -> pure []
+                  Just (x',l,_) -> (l :) <$> reconstruct past x'
 {-# INLINEABLE astar #-}
+
+foldForM :: (Monad m, Foldable t) => b -> t a -> (b -> a -> m b) -> m b
+foldForM b xs f = foldlM f b xs
+{-# INLINE foldForM #-}
 
 -- | Like 'astar' but without labelled edges.
 astar' :: (Functor t, Foldable t, Num c, Ord c, Ord a, Hashable a)
@@ -101,12 +115,6 @@ updateQ :: Ord c => c -> c -> Maybe (c,c) -> Maybe (c,c)
 updateQ f g Nothing = Just (f, g)
 updateQ f g (Just (f',g')) = if f < f' then Just (f,g) else Just (f',g')
 {-# INLINE updateQ #-}
-
-updateM :: Ord c => a -> b -> c -> Maybe (a, b, c) -> Maybe (a, b, c)
-updateM x l c Nothing  = Just (x, l, c)
-updateM x l c (Just (x', l', c')) = 
-    if c < c' then Just (x, l, c) else Just (x', l', c')
-{-# INLINE updateM #-}
 
 -- | Like 'Data.HashPSQ.alter' but without the optional return parameter.
 alter' :: (Ord p, Ord k, Hashable k) 
