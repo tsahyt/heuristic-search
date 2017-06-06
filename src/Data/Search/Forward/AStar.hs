@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE BangPatterns #-}
 module Data.Search.Forward.AStar 
 (
     astar,
@@ -16,7 +17,7 @@ import Data.Bifunctor
 import Data.Foldable
 import Data.Semigroup
 import Data.Hashable
-import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Lazy (HashMap)
 import Data.HashPSQ (HashPSQ)
 
 import qualified Data.HashMap.Lazy as M
@@ -48,12 +49,12 @@ astar neighbor heuristic goal root =
 
     where go :: HashPSQ a c c -> HashMap a (a, b, c) -> Maybe [b]
           go (Q.minView -> Nothing) _ = Nothing
-          go (Q.minView -> Just (x, _, g, q)) past
+          go (Q.minView -> Just (!x, _, !g, q)) past
               | goal x    = Just . reverse $ reconstruct past x
               | otherwise = 
                   let xs = neighbor x
-                      (q', p') = foldl' 
-                          (\z (y, l, c) -> bimap 
+                      (!q', !p') = foldl' 
+                          (\z (!y, !l, !c) -> bimap 
                               (alter' (updateQ (g + heuristic y) (g + c)) y) 
                               (M.alter (updateM x l (g + c)) y) z) 
                           (q, past) xs
@@ -62,7 +63,7 @@ astar neighbor heuristic goal root =
           
           reconstruct past x
               | x == root = []
-              | Just (x',l,_) <- M.lookup x past = l : reconstruct past x'
+              | Just (!x',!l,_) <- M.lookup x past = l : reconstruct past x'
               | otherwise = []
 {-# INLINEABLE astar #-}
 
@@ -74,7 +75,7 @@ astar' :: (Functor t, Foldable t, Num c, Ord c, Ord a, Hashable a)
        -> a                         -- ^ Starting node
        -> Maybe [a]
 astar' neighbor heuristic goal root =
-    let neighbor' = fmap (fmap (\(a,c) -> (a,a,c))) neighbor
+    let neighbor' = fmap (fmap (\(!a,!c) -> (a,a,c))) neighbor
      in (root :) <$> astar neighbor' heuristic goal root
 {-# INLINEABLE astar' #-}
 
@@ -138,7 +139,7 @@ idastar neighbor heuristic goal root = deepen (heuristic root)
                   Right x -> Just x
 
           go :: a -> c -> (c,c) -> Either (Maybe c) [b]
-          go x limit (f, g)
+          go !x limit (!f, !g)
               | goal x    = Right []
               | f > limit = Left (Just f)
               | otherwise =
