@@ -23,7 +23,7 @@ library
                        Data.Search.Local
                        Data.Search.Adversarial
   other-modules:       Data.Inf
-  ghc-options:         -Wall -O2 -threaded
+  ghc-options:         -Wall -O2
   build-depends:       base >= 4.7 && < 5,
                        unordered-containers >= 0.2.8.0 && < 0.3,
                        deque >= 0.2 && < 0.3,

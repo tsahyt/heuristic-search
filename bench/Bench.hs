@@ -2,6 +2,7 @@ module Main where
 
 import Data.Search.Forward.AStar
 import Data.Search.Forward.RBFS
+import Data.Search.Forward.NonOptimal
 import Criterion.Main
 
 main :: IO ()
@@ -64,6 +65,11 @@ main = defaultMain
             , bench "looped 100000" $ nf (rbfs1D looped) 100000
             ]
         ]
+    , bgroup "non-optimal"
+        [ bench "dls (250000, 18)" $ nf binaryDLS (250000, 18)
+        , bench "bfs (4000, 12)" $ nf binaryBFS (4000, 12)
+        , bench "ids (250000, 18)" $ nf binaryIDS (250000, 18)
+        ]
     ]
 
 euclidian1D goal x = abs $ goal - x
@@ -80,3 +86,15 @@ idastar1D neighbor goal = idastar' neighbor (euclidian1D goal) (== goal) 0
 
 rbfs1D :: (Int -> [(Int, Int)]) -> Int -> Maybe [Int]
 rbfs1D neighbor goal = rbfs' neighbor (euclidian1D goal) (== goal) 0
+
+binaryTree :: (Int, Int) -> [((Int, Int), Char)]
+binaryTree (k,l) = let l' = succ l in [((2*k - 1, l'), 'l'), ((2*k, l'), 'r')]
+
+binaryBFS :: (Int, Int) -> Maybe [Char]
+binaryBFS g = bfs binaryTree (== g) (1,0)
+
+binaryDLS :: (Int, Int) -> Maybe [Char]
+binaryDLS g = dls 20 binaryTree (== g) (1,0)
+
+binaryIDS :: (Int, Int) -> Maybe [Char]
+binaryIDS g = ids Nothing binaryTree (== g) (1,0)
