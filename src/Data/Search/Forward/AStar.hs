@@ -65,7 +65,7 @@ astar neighbor heuristic goal root =
                           Nothing -> 
                               T.insert past y (x, l, c)
                           Just (_, _, c') -> 
-                              when (c < c') $ T.insert past y (x, l, c)
+                              when (g + c < c') $ T.insert past y (x, l, g + c)
                       return $ alter' (updateQ (g + heuristic y) (g + c)) y z
                   go q' past
           go _ _ = error "impossible"
